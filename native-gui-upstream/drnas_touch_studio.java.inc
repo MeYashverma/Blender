@@ -6,8 +6,11 @@
   private android.widget.PopupWindow drnasStudioPopup;
   private android.widget.LinearLayout drnasStudioTopBar;
   private android.widget.TextView drnasStudioEditButton, drnasStudioHideButton;
-  private android.widget.TextView drnasStudioLmbView, drnasStudioRmbView;
+  private android.widget.TextView drnasStudioLmbView, drnasStudioRmbView, drnasStudioPad;
   private DrnasInputHold drnasStudioLmb, drnasStudioRmb;
+  private float drnasStudioCursorX = Float.NaN, drnasStudioCursorY = Float.NaN;
+  private float drnasStudioPadLastX, drnasStudioPadLastY;
+  private boolean drnasStudioPadDown = false;
   private boolean drnasStudioEditMode = false, drnasStudioHidden = false;
   private int drnasStudioScale = 100, drnasStudioOpacity = 94, drnasStudioSensitivity = 18;
   private static final int DRNAS_STUDIO_INK = android.graphics.Color.rgb(232, 237, 245);
@@ -156,17 +159,34 @@
 
   private void drnasStudioBuildMouseGroup() {
     android.widget.LinearLayout row = drnasStudioRow();
+
+    // The trackpad maps relative finger travel across the entire native screen.
+    // Native GHOST still receives a real cursor-position event; no fake UI-only cursor.
+    drnasStudioPad = drnasStudioLabel("MOVE CURSOR\nTRACKPAD", 9, DRNAS_STUDIO_MUTED);
+    drnasStudioPad.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+    drnasStudioPad.setBackground(drnasStudioShape(DRNAS_STUDIO_SURFACE_2, DRNAS_STUDIO_EDGE, 12));
+    drnasStudioPad.setElevation(drnasStudioDp(2));
+    drnasStudioPad.setContentDescription("Cursor touchpad. Drag here to move the Blender cursor. Hold LMB or RMB for dragging.");
+    android.widget.LinearLayout.LayoutParams padLp =
+        new android.widget.LinearLayout.LayoutParams(0, drnasStudioDp(88), 1f);
+    padLp.rightMargin = drnasStudioDp(5);
+    row.addView(drnasStudioPad, padLp);
+    drnasStudioPad.setOnTouchListener(this::drnasStudioPadTouch);
+
+    android.widget.LinearLayout buttons = new android.widget.LinearLayout(this);
+    buttons.setOrientation(android.widget.LinearLayout.VERTICAL);
+    buttons.setGravity(android.view.Gravity.CENTER);
     drnasStudioLmbView = drnasStudioPill("LMB", true);
     drnasStudioRmbView = drnasStudioPill("RMB", false);
-    drnasStudioLmbView.setContentDescription("Left mouse button. Hold to drag; double-tap to lock.");
-    drnasStudioRmbView.setContentDescription("Right mouse button. Hold to drag; double-tap to lock.");
-    android.widget.LinearLayout.LayoutParams p =
-        new android.widget.LinearLayout.LayoutParams(0, drnasStudioDp(46), 1f);
-    p.rightMargin = drnasStudioDp(5);
-    row.addView(drnasStudioLmbView, p);
-    android.widget.LinearLayout.LayoutParams q =
-        new android.widget.LinearLayout.LayoutParams(0, drnasStudioDp(46), 1f);
-    row.addView(drnasStudioRmbView, q);
+    drnasStudioLmbView.setContentDescription("Left mouse button. Hold while dragging the cursor trackpad; double-tap to lock.");
+    drnasStudioRmbView.setContentDescription("Right mouse button. Hold while dragging the cursor trackpad; double-tap to lock.");
+    buttons.addView(drnasStudioLmbView, new android.widget.LinearLayout.LayoutParams(
+        drnasStudioDp(68), drnasStudioDp(42)));
+    android.widget.LinearLayout.LayoutParams rmbLp =
+        new android.widget.LinearLayout.LayoutParams(drnasStudioDp(68), drnasStudioDp(42));
+    rmbLp.topMargin = drnasStudioDp(4);
+    buttons.addView(drnasStudioRmbView, rmbLp);
+    row.addView(buttons, new android.widget.LinearLayout.LayoutParams(-2, -2));
 
     drnasStudioLmbView.setOnTouchListener((v, e) ->
         drnasStudioMouseTouch(v, e, drnasStudioLmb));
@@ -175,7 +195,51 @@
 
     drnasStudioAddGroup("mouse", "MOUSE", row,
         android.view.Gravity.LEFT | android.view.Gravity.BOTTOM,
-        10, 0, 0, 12, 154);
+        10, 0, 0, 12, 218);
+  }
+
+  private boolean drnasStudioPadTouch(android.view.View view, android.view.MotionEvent e) {
+    if (drnasStudioEditMode) return true;
+    switch (e.getActionMasked()) {
+      case android.view.MotionEvent.ACTION_DOWN:
+        if (Float.isNaN(drnasStudioCursorX) || Float.isNaN(drnasStudioCursorY)) {
+          drnasStudioCursorX = (drnasStudioRoot.getWidth() > 0 ? drnasStudioRoot.getWidth()
+              : getResources().getDisplayMetrics().widthPixels) * 0.5f;
+          drnasStudioCursorY = (drnasStudioRoot.getHeight() > 0 ? drnasStudioRoot.getHeight()
+              : getResources().getDisplayMetrics().heightPixels) * 0.5f;
+          nativeOnDrnasInput(1, drnasStudioCursorX, drnasStudioCursorY, 0f);
+        }
+        drnasStudioPadLastX = e.getRawX();
+        drnasStudioPadLastY = e.getRawY();
+        drnasStudioPadDown = true;
+        view.setBackground(drnasStudioShape(DRNAS_STUDIO_SURFACE, DRNAS_STUDIO_ACCENT, 12));
+        view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+        return true;
+      case android.view.MotionEvent.ACTION_MOVE:
+        if (!drnasStudioPadDown) return true;
+        float screenW = drnasStudioRoot.getWidth() > 0 ? drnasStudioRoot.getWidth()
+            : getResources().getDisplayMetrics().widthPixels;
+        float screenH = drnasStudioRoot.getHeight() > 0 ? drnasStudioRoot.getHeight()
+            : getResources().getDisplayMetrics().heightPixels;
+        float sensitivity = Math.max(0.08f, Math.min(0.50f, drnasStudioSensitivity / 100f));
+        float gainX = sensitivity * screenW / Math.max(1f, view.getWidth());
+        float gainY = sensitivity * screenH / Math.max(1f, view.getHeight());
+        drnasStudioCursorX = Math.max(0f, Math.min(screenW - 1f,
+            drnasStudioCursorX + (e.getRawX() - drnasStudioPadLastX) * gainX));
+        drnasStudioCursorY = Math.max(0f, Math.min(screenH - 1f,
+            drnasStudioCursorY + (e.getRawY() - drnasStudioPadLastY) * gainY));
+        drnasStudioPadLastX = e.getRawX();
+        drnasStudioPadLastY = e.getRawY();
+        nativeOnDrnasInput(1, drnasStudioCursorX, drnasStudioCursorY, 0f);
+        return true;
+      case android.view.MotionEvent.ACTION_UP:
+      case android.view.MotionEvent.ACTION_CANCEL:
+        drnasStudioPadDown = false;
+        view.setBackground(drnasStudioShape(DRNAS_STUDIO_SURFACE_2, DRNAS_STUDIO_EDGE, 12));
+        return true;
+      default:
+        return true;
+    }
   }
 
   private boolean drnasStudioMouseTouch(android.view.View view, android.view.MotionEvent e,
