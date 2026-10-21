@@ -21,6 +21,7 @@ What it adds, all of it reachable only through the existing ``nativeOnDrnasInput
 GPL-2.0-or-later, like the upstream sources this patches.
 """
 from pathlib import Path
+import re
 import sys
 
 root = Path(sys.argv[1])
@@ -184,51 +185,61 @@ c = once(
     "extended key ranges",
 )
 
+# Extended key cases. Upstream/simfeo already maps a few of these (MOVE_HOME for example), and a
+# second case with the same value is a hard C++ error, so each key is only added when the file does
+# not mention it yet. This keeps the patch correct across upstream drift in either direction.
+EXTENDED_KEYS = [
+    ("AKEYCODE_NUMPAD_DOT", "GHOST_kKeyNumpadPeriod"),
+    ("AKEYCODE_NUMPAD_ENTER", "GHOST_kKeyNumpadEnter"),
+    ("AKEYCODE_NUMPAD_ADD", "GHOST_kKeyNumpadPlus"),
+    ("AKEYCODE_NUMPAD_SUBTRACT", "GHOST_kKeyNumpadMinus"),
+    ("AKEYCODE_NUMPAD_MULTIPLY", "GHOST_kKeyNumpadAsterisk"),
+    ("AKEYCODE_NUMPAD_DIVIDE", "GHOST_kKeyNumpadSlash"),
+    ("AKEYCODE_MOVE_HOME", "GHOST_kKeyHome"),
+    ("AKEYCODE_MOVE_END", "GHOST_kKeyEnd"),
+    ("AKEYCODE_PAGE_UP", "GHOST_kKeyUpPage"),
+    ("AKEYCODE_PAGE_DOWN", "GHOST_kKeyDownPage"),
+    ("AKEYCODE_PERIOD", "GHOST_kKeyPeriod"),
+    ("AKEYCODE_COMMA", "GHOST_kKeyComma"),
+    ("AKEYCODE_MINUS", "GHOST_kKeyMinus"),
+    ("AKEYCODE_EQUALS", "GHOST_kKeyEqual"),
+    ("AKEYCODE_GRAVE", "GHOST_kKeyAccentGrave"),
+    ("AKEYCODE_DPAD_CENTER", "GHOST_kKeyNumpadEnter"),
+]
+
+def _missing_keys(src: str) -> list[tuple[str, str]]:
+    present = set(re.findall(r"case\s+(AKEYCODE_[A-Z0-9_]+)\s*:", src))
+    return [(code, target) for code, target in EXTENDED_KEYS if code not in present]
+
+KEY_ANCHOR_OLD = """    case AKEYCODE_DPAD_DOWN:
+      return GHOST_kKeyDownArrow;
+    default:
+      return GHOST_kKeyUnknown;"""
+
+missing = _missing_keys(c)
+if not missing:
+    raise SystemExit("no extended key codes were added; the upstream conversion changed")
+insert = "".join(
+    "    case %s:\n      return %s;\n" % (code, target) for code, target in missing)
 c = once(
     c,
-    """    case AKEYCODE_DPAD_DOWN:
-      return GHOST_kKeyDownArrow;
-    default:
-      return GHOST_kKeyUnknown;""",
-    """    case AKEYCODE_DPAD_DOWN:
-      return GHOST_kKeyDownArrow;
-    /* DRNAS: numpad operators, navigation and punctuation used by Blender's keymap. */
-    case AKEYCODE_NUMPAD_DOT:
-      return GHOST_kKeyNumpadPeriod;
-    case AKEYCODE_NUMPAD_ENTER:
-      return GHOST_kKeyNumpadEnter;
-    case AKEYCODE_NUMPAD_ADD:
-      return GHOST_kKeyNumpadPlus;
-    case AKEYCODE_NUMPAD_SUBTRACT:
-      return GHOST_kKeyNumpadMinus;
-    case AKEYCODE_NUMPAD_MULTIPLY:
-      return GHOST_kKeyNumpadAsterisk;
-    case AKEYCODE_NUMPAD_DIVIDE:
-      return GHOST_kKeyNumpadSlash;
-    case AKEYCODE_MOVE_HOME:
-      return GHOST_kKeyHome;
-    case AKEYCODE_MOVE_END:
-      return GHOST_kKeyEnd;
-    case AKEYCODE_PAGE_UP:
-      return GHOST_kKeyUpPage;
-    case AKEYCODE_PAGE_DOWN:
-      return GHOST_kKeyDownPage;
-    case AKEYCODE_PERIOD:
-      return GHOST_kKeyPeriod;
-    case AKEYCODE_COMMA:
-      return GHOST_kKeyComma;
-    case AKEYCODE_MINUS:
-      return GHOST_kKeyMinus;
-    case AKEYCODE_EQUALS:
-      return GHOST_kKeyEqual;
-    case AKEYCODE_GRAVE:
-      return GHOST_kKeyAccentGrave;
-    case AKEYCODE_DPAD_CENTER:
-      return GHOST_kKeyNumpadEnter;
-    default:
-      return GHOST_kKeyUnknown;""",
+    KEY_ANCHOR_OLD,
+    KEY_ANCHOR_OLD.replace(
+        "    default:\n      return GHOST_kKeyUnknown;",
+        "    /* DRNAS: numpad operators, navigation and punctuation used by Blender's keymap. */\n"
+        + insert
+        + "    default:\n      return GHOST_kKeyUnknown;"),
     "extended key cases",
 )
+
+# A duplicate case value is a compile error, and it is cheap to prove here rather than in CI.
+_seen = re.findall(r"case\s+(AKEYCODE_[A-Z0-9_]+)\s*:", c)
+_dupes = sorted({code for code in _seen if _seen.count(code) > 1})
+if _dupes:
+    raise SystemExit(f"duplicate key cases would not compile: {_dupes}")
+for code, _target in missing:
+    if c.count(f"case {code}:") != 1:
+        raise SystemExit(f"{code} was not added exactly once")
 system.write_text(c)
 
 # ---------------------------------------------------------------- capability probe

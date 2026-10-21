@@ -176,6 +176,13 @@ check("installDrnasGestureOptions(optionRows)" in activity
 check('"gesture_orbit"' in activity and '"gesture_pinch"' in activity
       and '"gesture_pan"' in activity,
       "orbit, pinch and pan must be independently configurable")
+# Duplicate case values do not compile. This caught a real duplicate (MOVE_HOME, which upstream
+# already mapped) only after a 40-minute native build, so it is checked here from now on.
+_system = (root / "intern/ghost/intern/GHOST_SystemAndroid.cc").read_text()
+_cases = re.findall(r"case\s+(AKEYCODE_[A-Z0-9_]+)\s*:", _system)
+_dupes = sorted({code for code in _cases if _cases.count(code) > 1})
+check(not _dupes, "duplicate Android key cases would not compile: " + ", ".join(_dupes))
+
 check('"pointer_acceleration"' in activity, "pointer acceleration must be adjustable")
 check("MODE_SUBRECT" in activity,
       "a pad inside a smaller floating host must map 1:1 from its own origin")
