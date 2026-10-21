@@ -127,10 +127,25 @@ jobs:
           ANDROID_HOST_CXX: g++-14
           ANDROID_NDK_VERSION: '30.0.16248370'
         run: |
-          set -euxo pipefail
-          mkdir -p build
+          set -uo pipefail
+          mkdir -p build tools
+          # A 4-core runner compiling and linking Blender in parallel can hit the memory limit and
+          # die silently (no compiler error, the log just stops). Cap the job slots explicitly.
+          printf '#!/bin/sh\nexec /usr/bin/ninja -j 3 "$@"\n' > tools/ninja
+          chmod +x tools/ninja
+          export PATH="$PWD/tools:$PATH"
+          export CMAKE_BUILD_PARALLEL_LEVEL=3
+          free -m
           cd upstream
+          set +e
           bash build_files/android/build_apk.sh lite 2>&1 | tee ../build/native-build.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "build_apk.sh exit code: $rc"
+          echo "$rc" > ../build/rc.txt
+          free -m
+          sudo dmesg 2>/dev/null | tail -25 | tee ../build/dmesg.txt || true
+          test "$rc" -eq 0
           test -s ../blender_build_android/android_apk_stage_lite/blender-lite.apk
 
       - name: Report build diagnostics
@@ -147,6 +162,9 @@ jobs:
             df -h / | tail -2
             echo ""
             echo "log lines: $(wc -l < "$f" 2>/dev/null)"
+            echo "--- exit code / memory ---"
+            cat build/rc.txt 2>/dev/null
+            tail -12 build/dmesg.txt 2>/dev/null
             echo "--- failing targets ---"
             grep -nE 'FAILED:|error:|CMake Error|No space left|Killed|undefined reference' "$f" \
               | grep -vE '\.svg|\.cc\.o$' | head -15
