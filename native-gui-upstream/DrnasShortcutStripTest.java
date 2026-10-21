@@ -38,8 +38,9 @@ public final class DrnasShortcutStripTest {
     check(sameOrder(strip, "Rotate", "Scale", "Move", "Axis X", "Undo", "Save", "Search"),
         "move down by two");
     check(!strip.move(0, -5), "moving past the top is a no-op");
-    check(strip.move(strip.size() - 1, 99), "moving past the bottom clamps");
-    check("Search".equals(strip.labelAt(strip.size() - 1)), "last item stays last");
+    check(strip.move(2, 99), "moving past the bottom clamps");
+    check("Move".equals(strip.labelAt(strip.size() - 1)), "clamped item lands last");
+    check(!strip.move(strip.size() - 1, 99), "an item already last cannot move further");
 
     // 3. Hide/unhide and the "never hide everything" guard.
     check(!strip.isHidden(0), "nothing hidden by default");
