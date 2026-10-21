@@ -689,6 +689,31 @@
       public void onStopTrackingTouch(SeekBar bar) {}
     });
     options.addView(sensitivity, new LinearLayout.LayoutParams(-1, dpDrnas(38)));
+
+    final TextView accelerationLabel = drnasUiLabel(DrnasLanguage.text(BlenderActivity.this,
+        "Pointer acceleration: ", "Ubrzanje pokazivača: ")
+        + drnasPrefs.getInt("pointer_acceleration", 35) + "%");
+    options.addView(accelerationLabel);
+    final SeekBar acceleration = new SeekBar(this);
+    acceleration.setMax(150);
+    acceleration.setProgress(Math.max(0, Math.min(150,
+        drnasPrefs.getInt("pointer_acceleration", 35))));
+    acceleration.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
+        "Extra pointer speed for fast swipes; zero keeps the motion linear",
+        "Dodatna brzina za brze pokrete; nula zadržava linearno kretanje"));
+    acceleration.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+      public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
+        accelerationLabel.setText(DrnasLanguage.text(BlenderActivity.this,
+            "Pointer acceleration: ", "Ubrzanje pokazivača: ") + value + "%");
+        if (fromUser) {
+          drnasPrefs.edit().putInt("pointer_acceleration", value).apply();
+          drnasPadMotion.setAcceleration(value / 100f);
+        }
+      }
+      public void onStartTrackingTouch(SeekBar bar) {}
+      public void onStopTrackingTouch(SeekBar bar) {}
+    });
+    options.addView(acceleration, new LinearLayout.LayoutParams(-1, dpDrnas(38)));
   }
 
   private void installDrnasLayoutOptions(LinearLayout options) {

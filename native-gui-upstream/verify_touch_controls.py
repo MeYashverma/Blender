@@ -176,6 +176,7 @@ check("installDrnasGestureOptions(optionRows)" in activity
 check('"gesture_orbit"' in activity and '"gesture_pinch"' in activity
       and '"gesture_pan"' in activity,
       "orbit, pinch and pan must be independently configurable")
+check('"pointer_acceleration"' in activity, "pointer acceleration must be adjustable")
 check("MODE_SUBRECT" in activity,
       "a pad inside a smaller floating host must map 1:1 from its own origin")
 check("drnasTyping()" in activity,
