@@ -131,14 +131,16 @@ jobs:
           mkdir -p build tools
           # A 4-core runner compiling and linking Blender in parallel can hit the memory limit and
           # die silently (no compiler error, the log just stops). Cap the job slots explicitly.
-          printf '#!/bin/sh\nexec /usr/bin/ninja -j 3 "$@"\n' > tools/ninja
+          printf '#!/bin/sh\nexec /usr/bin/ninja -j 3 -k 0 "$@"\n' > tools/ninja
           chmod +x tools/ninja
           export PATH="$PWD/tools:$PATH"
           export CMAKE_BUILD_PARALLEL_LEVEL=3
           free -m
           cd upstream
           set +e
-          bash build_files/android/build_apk.sh lite 2>&1 | tee ../build/native-build.log
+          # bash -x records which *step* failed; ninja stops at the last progress line and the
+          # actual message can be far from the tail, so the trace is the reliable signal.
+          PS4='+CMD ' bash -x build_files/android/build_apk.sh lite 2>&1 | tee ../build/native-build.log
           rc=${PIPESTATUS[0]}
           set -e
           echo "build_apk.sh exit code: $rc"
@@ -165,11 +167,12 @@ jobs:
             echo "--- exit code / memory ---"
             cat build/rc.txt 2>/dev/null
             tail -12 build/dmesg.txt 2>/dev/null
-            echo "--- failing targets ---"
-            grep -nE 'FAILED:|error:|CMake Error|No space left|Killed|undefined reference' "$f" \
-              | grep -vE '\.svg|\.cc\.o$' | head -15
-            echo "--- tail 120 ---"
-            tail -120 "$f"
+            echo "--- failing targets (unfiltered) ---"
+            grep -nE 'FAILED:|error:|CMake Error|No space left|Killed|undefined reference|command not found|cannot stat' "$f" | head -12
+            echo "--- last traced commands ---"
+            grep -n '^+CMD ' "$f" | tail -25
+            echo "--- tail 300 ---"
+            tail -300 "$f"
             echo '```'
           } > /tmp/report.md 2>&1
           cut -c1-500 /tmp/report.md | head -160
