@@ -192,6 +192,7 @@
       case android.view.MotionEvent.ACTION_UP:
         view.setAlpha(1f);
         hold.up(android.os.SystemClock.uptimeMillis(), true);
+        drnasStudioRefreshMouseButtons();
         return true;
       case android.view.MotionEvent.ACTION_CANCEL:
         view.setAlpha(1f);
@@ -327,7 +328,7 @@
     drnasStudioGrips.add(grip);
   }
 
-  private boolean drnasStudioDragGroup(android.view.View grip, android.view.View group,
+  private boolean drnasStudioDragGroup(android.widget.TextView grip, android.view.View group,
                                         String key, android.view.MotionEvent e) {
     if (!drnasStudioEditMode) return false;
     switch (e.getActionMasked()) {
