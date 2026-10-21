@@ -1,0 +1,161 @@
+name: DRNAS touch controls - ARM64 APK
+
+# Builds a real installable ARM64 APK so the touch control layer can be tested on a phone.
+# This is the only path that produces a libblender.so with the native input extension
+# (middle button, Shift hold, horizontal wheel, F1-F12/numpad/Home keys, capability probe).
+on:
+  push:
+    branches: [arena/e8ebe2c9-blender]
+    paths:
+      - '.github/workflows/native-apk-touch-test.yml'
+      - 'native-gui-upstream/patch_native_touch_extra.py'
+      - 'native-gui-upstream/patch_drnas_touch_layer.py'
+      - 'native-gui-upstream/drnas_touch_layer.java.inc'
+      - 'native-gui-upstream/drnas_dock_nav.java.inc'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - name: Check out the DRNAS patches
+        uses: actions/checkout@v4
+
+      - name: Check out the exact pinned upstream source
+        uses: actions/checkout@v4
+        with:
+          repository: simfeo/blender
+          ref: d93bd33cba768e19ee4387a31c0ea137ee2f0047
+          path: upstream
+          fetch-depth: 1
+          lfs: false
+          submodules: false
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Apply the complete patch chain
+        run: |
+          set -euxo pipefail
+          test "$(git -C upstream rev-parse HEAD)" = d93bd33cba768e19ee4387a31c0ea137ee2f0047
+          bash native-gui-upstream/apply_gpu_test_patches.sh upstream
+          python3 native-gui-upstream/add_control_group_editor.py upstream
+          python3 native-gui-upstream/fix_relative_ime_input.py upstream
+          python3 native-gui-upstream/fix_floating_stretch_v10.py upstream
+          python3 native-gui-upstream/patch_alpha_1_0_ui.py upstream
+          python3 native-gui-upstream/patch_native_touch_extra.py upstream
+          python3 native-gui-upstream/patch_drnas_touch_layer.py upstream
+          python3 native-gui-upstream/verify_alpha_1_0.py upstream
+          python3 native-gui-upstream/verify_touch_controls.py upstream
+          bash native-gui-upstream/run_input_tests.sh build/tests-jvm-touch
+          git -C upstream diff --stat | tail -3
+
+      - name: Confirm the native input extension is in the sources
+        run: |
+          set -euxo pipefail
+          grep -Fq 'DRNAS_CAP_MIDDLE' upstream/intern/ghost/intern/GHOST_AndroidMain.cc
+          grep -Fq 'nativeDrnasCapabilities' upstream/intern/ghost/intern/GHOST_AndroidMain.cc
+          grep -Fq 'case 8:' upstream/intern/ghost/intern/GHOST_SystemAndroid.cc
+          grep -Fq 'AKEYCODE_NUMPAD_0' upstream/intern/ghost/intern/GHOST_SystemAndroid.cc
+
+      - name: Free disk space for the native build
+        run: |
+          set -euxo pipefail
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk/ndk/25.* \
+            /usr/local/lib/android/sdk/ndk/26.* /usr/local/lib/android/sdk/ndk/27.* \
+            /usr/local/lib/android/sdk/ndk/28.* /usr/local/lib/android/sdk/ndk/29.* \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /opt/ghc \
+            /usr/local/lib/ghcup || true
+          df -h /
+
+      - name: Install the upstream Android toolchain
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            git-lfs ninja-build patchelf zip unzip gcc-14 g++-14
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "ndk;30.0.16248370" "platforms;android-35" \
+            "build-tools;35.0.1" "platform-tools"
+          test -f "$ANDROID_HOME/ndk/30.0.16248370/build/cmake/android.toolchain.cmake"
+          ln -s "$ANDROID_HOME" "$HOME/android-sdk"
+
+      - name: Fetch the pinned Android and host prebuilt libraries
+        run: |
+          set -euxo pipefail
+          cd upstream
+          git lfs install --local
+          git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
+          git config --local credential.https://projects.blender.org.helper \
+            '!f() { echo username=; echo password=; }; f'
+          git lfs pull
+          git config submodule.lib/linux_x64.update checkout
+          git -c protocol.file.allow=always submodule update --init --depth 1 --checkout \
+            lib/android_arm64 lib/linux_x64
+          test -d lib/android_arm64
+          test -d lib/linux_x64
+          du -sh lib/android_arm64 lib/linux_x64
+          df -h /
+
+      - name: Supply Vulkan headers compatible with Android GHOST
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 3 --retry-all-errors -o /tmp/vulkan_headers.tar.gz \
+            https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.341.tar.gz
+          mkdir -p blender_build_android/lib/vulkan_headers
+          tar -xzf /tmp/vulkan_headers.tar.gz -C /tmp
+          cp -R /tmp/Vulkan-Headers-1.4.341/include blender_build_android/lib/vulkan_headers/
+          mkdir -p upstream/../blender_build_android/lib
+          cp -R blender_build_android/lib/vulkan_headers upstream/../blender_build_android/lib/ || true
+
+      - name: Build the native ARM64 APK (lite)
+        env:
+          CC: gcc-14
+          CXX: g++-14
+          ANDROID_HOST_CC: gcc-14
+          ANDROID_HOST_CXX: g++-14
+          ANDROID_NDK_VERSION: '30.0.16248370'
+        run: |
+          set -euxo pipefail
+          cd upstream
+          bash build_files/android/build_apk.sh lite
+          test -s ../blender_build_android/android_apk_stage_lite/blender-lite.apk
+
+      - name: Verify the APK, its signature and the native input entrypoints
+        run: |
+          set -euxo pipefail
+          SRC=blender_build_android/android_apk_stage_lite/blender-lite.apk
+          BT="$ANDROID_HOME/build-tools/35.0.1"
+          "$BT/apksigner" verify --verbose "$SRC"
+          "$BT/aapt" dump badging "$SRC" | head -3
+          unzip -Z1 "$SRC" | grep -F 'lib/arm64-v8a/libblender.so'
+          unzip -p "$SRC" lib/arm64-v8a/libblender.so > /tmp/touch-test.so
+          readelf -Ws /tmp/touch-test.so | grep -F 'Java_org_blender_blender_BlenderActivity_nativeOnDrnasInput'
+          readelf -Ws /tmp/touch-test.so | grep -F 'Java_org_blender_blender_BlenderActivity_nativeDrnasCapabilities'
+          # The shipped classes must include the touch layer, not just the activity.
+          unzip -p "$SRC" classes.dex > /tmp/classes.dex
+          test -s /tmp/classes.dex
+          strings /tmp/classes.dex | grep -F 'DrnasGestureEngine' | head -2
+          strings /tmp/classes.dex | grep -F 'DrnasPointerMap' | head -2
+          mkdir -p touch-apk
+          cp "$SRC" touch-apk/DRNAS-Native-Blender-Touch-TEST-arm64.apk
+          (cd touch-apk && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          cp native-gui-upstream/README.md touch-apk/SOURCE-ATTRIBUTION.txt
+
+      - name: Upload the installable APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DRNAS-Touch-TEST-${{ github.run_id }}
+          path: touch-apk/
+          if-no-files-found: error
+          retention-days: 30
