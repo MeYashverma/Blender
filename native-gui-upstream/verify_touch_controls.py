@@ -205,5 +205,22 @@ if failures:
         print("  -", failure)
     sys.exit(1)
 
+# Java reserved words may not be used as identifiers. A tree-sitter parse accepts them, so this is
+# checked textually: it caught "float native = ..." which javac rejects.
+JAVA_RESERVED = (
+    "abstract assert boolean break byte case catch char class const continue default do double "
+    "else enum extends final finally float for goto if implements import instanceof int interface "
+    "long native new package private protected public return short static strictfp super switch "
+    "synchronized this throw throws transient try void volatile while")
+_reserved = set(JAVA_RESERVED.split())
+_decl = re.compile(r"\b(?:float|int|double|long|boolean|char|byte|short|String|var)\s+([A-Za-z_$][\w$]*)")
+_keyword_hits = []
+for _path in sorted(patch_dir.glob("Drnas*.java")):
+    for _num, _line in enumerate(_path.read_text().splitlines(), 1):
+        for _name in _decl.findall(_line):
+            if _name in _reserved:
+                _keyword_hits.append("%s:%d uses the reserved word %r" % (_path.name, _num, _name))
+check(not _keyword_hits, "reserved words used as identifiers: " + "; ".join(_keyword_hits))
+
 print("PASS: touch controls verified (pointer mapping, gesture actions, capability contract, "
       "keyboard reachability, release paths, tests and Android-free logic)")

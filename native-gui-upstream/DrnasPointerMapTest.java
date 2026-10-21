@@ -46,9 +46,9 @@ public class DrnasPointerMapTest {
     // 4. Monotonic: no fold-back in the middle of the display.
     float previous = -1f;
     for (float x = 0f; x <= 2610f; x += 13f) {
-      float native = map.nativeX(x);
-      check(native >= previous, "mapping must be monotonic");
-      previous = native;
+      float mapped = map.nativeX(x);
+      check(mapped >= previous, "mapping must be monotonic");
+      previous = mapped;
     }
 
     // 5. Sub-rectangle mode is 1:1 plus offset and never scales.
