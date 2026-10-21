@@ -27,7 +27,13 @@ expect('hr.drnas.blendernativealpha10' in manifest,"wrong Alpha package name")
 expect('1.0-alpha' in manifest,"wrong versionName")
 expect('DRNAS Native Blender Alpha 1.0' in manifest,"wrong Alpha label")
 expect('nativeOnCommitText' in activity,"IME text bridge lost")
-expect('drnasNativePointerX' in activity,"v10 stretch pointer mapping lost")
+# v10 mapped the popup pointer into the decor viewport with drnasNativePointerX/Y. The touch
+# control layer replaced that pair with the single tested DrnasPointerMap strategy: the stretched
+# mapping is still required, but it must come from the one coordinate model.
+expect('drnasNativePointerX' not in activity or 'DrnasPointerMap' not in activity,
+       "pointer mapping must use a single strategy, not two")
+expect('DrnasPointerMap' in activity and 'drnasMap.nativeX(' in activity,
+       "stretch-aware pointer mapping lost")
 expect('drnasCompactMouseWindow' in activity,"floating mouse window lost")
 
 # Explicit important English UI surface checks. Other translations are

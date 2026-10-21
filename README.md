@@ -1,5 +1,53 @@
 # DRNAS Native Blender — Android ARM64
 
+## Touch control layer (this branch)
+
+This working tree extends **Alpha 1.0** of DRNAS Native Blender with a real Android input system.
+The baseline is `release/native-alpha-1.0`, which is a strict superset of every feature/fix branch in
+the upstream repository (v8 control editor, v9 pointer+IME, v10 floating windows/stretch).
+
+What the layer adds:
+
+* **One coordinate model** (`DrnasPointerMap`) for view↔GHOST mapping, with `FIT` (stretched popup)
+  and `SUBRECT` (pad smaller than the surface) modes, edge/corner reach and no double scaling.
+* **A tested gesture recogniser** (`DrnasGestureEngine`): tap = LMB click at the landing point,
+  drag = LMB drag, two-finger drag = MMB orbit, pinch = zoom, three-finger drag = Shift+MMB pan,
+  two-finger tap = RMB. Pointer ids (not indices), guaranteed press/release balance, no
+  click-after-gesture.
+* **Relative touchpad mode** (`DrnasRelativePad`): speed, acceleration, sub-pixel precision, clamped
+  to the surface, mode remembered across restarts, with a `TOUCH ○ / PAD ●` badge.
+* **Complete mouse dock**: LMB, RMB, MMB, wheel up/down (press-and-hold repeats), horizontal wheel,
+  press-and-hold and double-tap latching with visible latched state.
+* **Navigation widget**: ORBIT/PAN pads, zoom, Frame Selected/All, Front/Right/Top (+Ctrl variants),
+  Perspective/Ortho, User view — disabled with a reason when the running library cannot deliver them.
+* **Keyboard strip extras**: Backspace, arrows, hide-keyboard, "Clr" release-all, Save As; modifiers
+  stay momentary on hold, latched on double tap. IME text entry is unchanged.
+* **Layout presets and clamping**: six presets, reset, hide/show, and safe-area clamping so a group
+  can never become unreachable after rotation, resize, cutout or system-gesture changes.
+* **Native fixes**: middle button, Shift hold, horizontal wheel, and the F1–F12 / numpad / Home keys
+  that the stock Android key conversion silently dropped (the old "Search", "Front", "Side" and
+  "Top" buttons were dead keys).
+
+Read the contract in [`native-gui-upstream/TOUCH_CONTROLS_NOTES.md`](native-gui-upstream/TOUCH_CONTROLS_NOTES.md),
+the changes in [`CHANGELOG_TOUCH_CONTROLS.md`](native-gui-upstream/CHANGELOG_TOUCH_CONTROLS.md), the
+file list in [`MODIFIED_FILES.md`](native-gui-upstream/MODIFIED_FILES.md) and the verification status
+in [`TEST_REPORT.md`](native-gui-upstream/TEST_REPORT.md).
+
+Validate without a device:
+
+```bash
+# after checking out the pinned upstream source into ./upstream
+python3 native-gui-upstream/patch_native_touch_extra.py upstream
+python3 native-gui-upstream/patch_drnas_touch_layer.py upstream
+python3 native-gui-upstream/verify_touch_controls.py upstream
+bash native-gui-upstream/run_input_tests.sh build/tests-jvm
+```
+
+CI runs exactly this plus a real `javac` compile of the patched activity against
+`platforms;android-35/android.jar` in
+[`native-touch-controls.yml`](.github/workflows/native-touch-controls.yml).
+
+
 **An unofficial, open-source Android experiment bringing Blender to ARM64 phones with a native Android runtime and DRNAS touch controls.**
 
 [Native Blender PreAlpha 0.1 — release page](https://github.com/Frane12/DRNAS-Native-Blender/releases/tag/native-prealpha-v0.1) · [Build and verification](https://github.com/Frane12/DRNAS-Native-Blender/actions/workflows/native-gui-controls-build.yml) · [DRNAS EMU Blender v1.1](https://github.com/Frane12/Testturnip/releases/tag/blender-v1.1)

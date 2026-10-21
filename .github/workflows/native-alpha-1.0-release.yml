@@ -65,6 +65,10 @@ jobs:
           python3 native-gui-upstream/fix_floating_stretch_v10.py upstream
           python3 native-gui-upstream/patch_alpha_1_0_ui.py upstream
           python3 native-gui-upstream/verify_alpha_1_0.py upstream
+          python3 native-gui-upstream/patch_native_touch_extra.py upstream
+          python3 native-gui-upstream/patch_drnas_touch_layer.py upstream
+          python3 native-gui-upstream/verify_touch_controls.py upstream
+          bash native-gui-upstream/run_input_tests.sh build/tests-jvm-touch
           python3 native-gui-upstream/test_gpu_init_report.py
           python3 native-gui-upstream/test_smooth_zoom.py
           python3 native-gui-upstream/test_save_exit.py
