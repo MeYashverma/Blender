@@ -5,10 +5,10 @@ This branch replaces the old debug-looking floating buttons with a fresh Android
 ## New control design
 
 - A slim pinned header with layout-edit, settings, and hide/show controls.
-- Dedicated LMB/RMB panel with press-and-hold and optional double-tap latching.
+- Dedicated relative cursor trackpad plus LMB/RMB buttons. Move the Blender cursor with the trackpad, hold either mouse button while moving for click-and-drag, or double-tap to latch a button.
 - Compact horizontally scrolling tool dock: Move (G), Rotate (R), Scale (S), Tab/mode, Escape, Undo/Redo, and quick keys.
 - Separate viewport panel for wheel zoom and view navigation (front/right/top/perspective/orbit).
-- Landscape-adaptive dock width, configurable control size and opacity, configurable gesture sensitivity, and saved panel positions.
+- Landscape-adaptive dock sizing, configurable control size and opacity, configurable cursor/gesture sensitivity, and saved panel positions.
 - Edit-layout mode; drag each panel by its header grip. In regular use, header grips do not intercept viewport gestures.
 - Lifecycle cleanup releases latched/held virtual mouse buttons when the activity backgrounds.
 
@@ -26,7 +26,7 @@ When the workflow completes, open Actions → DRNAS Touch Studio Android APK, do
 
 Test with a disposable scene:
 1. Tap G/R/S and confirm Blender enters the transform operation.
-2. Hold LMB or RMB, then drag in the viewport with another finger. Double-tap a mouse button to latch it; tap once to release.
+2. Drag on the cursor trackpad to move the Blender cursor. Hold LMB/RMB while moving the trackpad to test click-and-drag; double-tap a mouse button to latch it and tap once to release.
 3. Try mouse-wheel zoom, view presets, Undo/Redo, quick keys, keyboard popup, edit-layout dragging, hide/show, size/opacity/sensitivity, and background/resume.
 4. Save a copy of any .blend file before testing.
 
