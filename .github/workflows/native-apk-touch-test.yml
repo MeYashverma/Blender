@@ -135,21 +135,26 @@ jobs:
         if: failure()
         run: |
           set +e
-          echo "pwd=$(pwd)"
-          ls -l build 2>&1 | head -5
           f=build/native-build.log
+          ls -l build 2>&1 | head -5
           if [ ! -f "$f" ]; then
             echo "::error title=native build::no build log was produced"
             exit 0
           fi
           echo "log lines: $(wc -l < "$f")"
-          { grep -nE 'error|Error|FAILED|fatal|No space|Killed' "$f" || true; } \
-            | head -30 | cut -c1-350 | tee /tmp/errs.txt
+          # The runner log and artifacts live on storage this environment cannot read, so every
+          # diagnostic has to be an annotation: the failing command plus its surrounding output.
+          nl -ba "$f" | grep -E 'FAILED:|error:|Error 1|CMake Error|No space left|Killed|undefined reference|undefined symbol' \
+            | grep -vE '\.svg|\.cc\.o$|error_handling|status_error' \
+            | tail -20 | cut -c1-340 > /tmp/hits.txt
           while IFS= read -r line; do
-            echo "::error title=native build::$(printf '%s' "$line" | tr -d '%,\r')"
-          done < /tmp/errs.txt
-          echo "--- last 30 lines ---"
-          tail -30 "$f" | cut -c1-350
+            echo "::error title=native build::$(printf '%s' "$line" | tr -d '%\r')"
+          done < /tmp/hits.txt
+          echo "--- tail 40 ---"
+          nl -ba "$f" | tail -40 | cut -c1-340 > /tmp/tail.txt
+          while IFS= read -r line; do
+            echo "::error title=native build tail::$(printf '%s' "$line" | tr -d '%\r')"
+          done < /tmp/tail.txt
 
       - name: Upload the build log
         if: always()
