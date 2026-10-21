@@ -18,6 +18,7 @@ CLASSES=(
   DrnasMouseState
   DrnasControlLayout
   DrnasGestureEngine
+  DrnasShortcutStrip
   DrnasGpuPolicy
 )
 TESTS=(
@@ -28,6 +29,7 @@ TESTS=(
   DrnasMouseStateTest
   DrnasControlLayoutTest
   DrnasGestureEngineTest
+  DrnasShortcutStripTest
   DrnasGpuPolicyTest
 )
 

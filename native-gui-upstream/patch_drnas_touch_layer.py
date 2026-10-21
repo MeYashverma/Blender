@@ -210,7 +210,8 @@ once(
     keyboard.setOnClickListener(v -> showKeyboard());""",
     """    final Button keyboard = drnasSmallKey("Keyboard", 0, 0, bottom);
     keyboard.setOnClickListener(v -> showKeyboard());
-    installDrnasKeyExtras(bottom);""",
+    installDrnasKeyExtras(bottom);
+    drnasBindShortcutStrip(row);""",
     "keyboard extras hook",
 )
 
@@ -356,6 +357,7 @@ shipped = [
     "DrnasMouseState.java",
     "DrnasControlLayout.java",
     "DrnasGestureEngine.java",
+    "DrnasShortcutStrip.java",
 ]
 for name in shipped:
     source = patch_dir / name

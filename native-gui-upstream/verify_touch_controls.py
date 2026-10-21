@@ -161,6 +161,17 @@ check("AKEYCODE_NUMPAD_0 && keycode <= AKEYCODE_NUMPAD_9" in system,
 check("AKEYCODE_MOVE_HOME" in system, "native conversion must map Home")
 check("AKEYCODE_PERIOD" in system and "GHOST_kKeyPeriod" in system,
       "numeric entry needs the period key")
+check("drnasBindShortcutStrip(row)" in activity,
+      "the shortcut strip must be registered so it can be reordered and hidden")
+check("DrnasShortcutStrip.PREF_KEY" in activity,
+      "the shortcut strip order must be persisted")
+check("drnasBuildStripArranger" in activity,
+      "the shortcut strip needs a reorder/hide editor")
+check("KEYCODE_MOVE_HOME" in activity, "Frame All must use the Home key")
+check("KEYCODE_Z,\n        android.view.KeyEvent.META_CTRL_ON | android.view.KeyEvent.META_SHIFT_ON"
+      in activity, "Redo must be present")
+check("drnasTyping()" in activity,
+      "view keys must be blocked while a text field is being edited")
 check("badge.setOnLongClickListener" in activity,
       "hiding the overlay must leave a visible way to restore it")
 check('"haptics"' in activity, "haptic feedback must be configurable and disable-able")

@@ -147,6 +147,34 @@
    * (numpad, Home). They are disabled with an explicit note instead of silently doing nothing
    * on a library that cannot deliver them.
    */
+  /**
+   * True while the soft keyboard is up, i.e. the user is editing text somewhere in Blender. View
+   * and frame keys must not be delivered then: a numpad key would be typed into the field.
+   */
+  private boolean drnasTyping() {
+    return drnasImeVisible();
+  }
+
+  /**
+   * True when the Android soft keyboard is on screen. Window insets are the only reliable source
+   * (a flag set by showKeyboard() goes stale when the user swipes the keyboard away), so older
+   * platforms simply report false and keep the previous, ungated behaviour.
+   */
+  private boolean drnasImeVisible() {
+    try {
+      if (android.os.Build.VERSION.SDK_INT >= 30 && getWindow() != null) {
+        final android.view.WindowInsets insets =
+            getWindow().getDecorView().getRootWindowInsets();
+        if (insets != null) {
+          return insets.isVisible(android.view.WindowInsets.Type.ime());
+        }
+      }
+    } catch (Throwable ignored) {
+      /* Defensive: gating must never crash input. */
+    }
+    return false;
+  }
+
   private void drnasNavKey(LinearLayout row, String label, int key, int meta) {
     final TextView button = drnasNavButton(row, label, label.length() > 5 ? 74 : 56);
     if (!drnasHasCapability(DRNAS_CAP_KEYS)) {
@@ -158,7 +186,31 @@
               "needs the native input update", "potreban je native update unosa"));
       return;
     }
-    button.setOnClickListener(v -> drnasTap(key, meta));
+    button.setOnClickListener(v -> {
+      if (drnasTyping()) {
+        drnasFlashDisabled(button, DrnasLanguage.text(BlenderActivity.this,
+            "blocked while typing", "blokirano tijekom tipkanja"));
+        return;
+      }
+      drnasHaptic(button);
+      drnasTap(key, meta);
+    });
+  }
+
+  /** Brief visual refusal instead of a silent no-op or a wrong key in a text field. */
+  private void drnasFlashDisabled(View view, String reason) {
+    view.setAlpha(0.35f);
+    view.postDelayed(() -> view.setAlpha(1f), 140);
+    view.setContentDescription(reason);
+  }
+
+  /** Short toast used where a silent no-op would look like a broken button. */
+  private void drnasToast(String message) {
+    try {
+      android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show();
+    } catch (Throwable ignored) {
+      /* A toast must never break input. */
+    }
   }
 
   private void installDrnasNavWidget() {
@@ -257,6 +309,8 @@
 
   /** Extra keys appended to the shortcut strip: editing, arrows and keyboard control. */
   private void installDrnasKeyExtras(LinearLayout row) {
+    drnasSmallKey("Redo", android.view.KeyEvent.KEYCODE_Z,
+        android.view.KeyEvent.META_CTRL_ON | android.view.KeyEvent.META_SHIFT_ON, row);
     final Button backspace = drnasSmallKey("\u232B", android.view.KeyEvent.KEYCODE_DEL, 0, row);
     backspace.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
         "Backspace", "Brisanje ulijevo"));
@@ -447,6 +501,141 @@
     drnasRefreshPanels();
   }
 
+
+  // ---------------------------------------------------------------- shortcut strip arrangement
+  private DrnasShortcutStrip drnasStrip;
+  private final java.util.LinkedHashMap<String, View> drnasStripViews =
+      new java.util.LinkedHashMap<>();
+  private final java.util.LinkedHashMap<String, ViewGroup> drnasStripParents =
+      new java.util.LinkedHashMap<>();
+
+  /**
+   * Registers the already-built shortcut buttons so the user can reorder and hide them. The views
+   * are the ones the strip already uses - nothing is rebuilt, so listeners and key bindings stay
+   * exactly as the rest of the activity created them.
+   */
+  private void drnasBindShortcutStrip(LinearLayout strip) {
+    drnasStripViews.clear();
+    drnasStripParents.clear();
+    final java.util.ArrayList<String> labels = new java.util.ArrayList<>();
+    for (int rowIndex = 0; rowIndex < strip.getChildCount(); rowIndex++) {
+      final View row = strip.getChildAt(rowIndex);
+      if (!(row instanceof ViewGroup)) {
+        continue;
+      }
+      final ViewGroup group = (ViewGroup) row;
+      for (int i = 0; i < group.getChildCount(); i++) {
+        final View child = group.getChildAt(i);
+        if (!(child instanceof Button)) {
+          continue;
+        }
+        final String label = ((Button) child).getText().toString();
+        if (label.length() == 0 || drnasStripViews.containsKey(label)) {
+          continue;
+        }
+        drnasStripViews.put(label, child);
+        drnasStripParents.put(label, group);
+        labels.add(label);
+      }
+    }
+    drnasStrip = new DrnasShortcutStrip(labels.toArray(new String[0]));
+    drnasStrip.applyPref(drnasPrefs.getString(DrnasShortcutStrip.PREF_KEY, ""));
+    drnasApplyShortcutStrip();
+  }
+
+  private void drnasSaveShortcutStrip() {
+    if (drnasStrip == null) {
+      return;
+    }
+    drnasPrefs.edit().putString(DrnasShortcutStrip.PREF_KEY, drnasStrip.encode()).apply();
+  }
+
+  /** Applies the saved order and visibility to the real strip views. */
+  private void drnasApplyShortcutStrip() {
+    if (drnasStrip == null || drnasStripViews.isEmpty()) {
+      return;
+    }
+    final java.util.LinkedHashSet<ViewGroup> parents =
+        new java.util.LinkedHashSet<>(drnasStripParents.values());
+    for (ViewGroup parent : parents) {
+      for (int slot = 0; slot < drnasStrip.size(); slot++) {
+        final String label = drnasStrip.labelAt(slot);
+        final View view = label == null ? null : drnasStripViews.get(label);
+        if (view == null || drnasStripParents.get(label) != parent) {
+          continue;
+        }
+        parent.removeView(view);
+        view.setVisibility(drnasStrip.isHidden(slot) ? View.GONE : View.VISIBLE);
+        parent.addView(view);
+      }
+    }
+  }
+
+  /** Editable list of the strip: move, hide/restore and reset, persisted on every change. */
+  private void drnasBuildStripArranger(final LinearLayout container) {
+    container.removeAllViews();
+    if (drnasStrip == null) {
+      final TextView empty = drnasUiLabel(DrnasLanguage.text(BlenderActivity.this,
+          "Shortcut strip not available", "Traka prečaca nije dostupna"));
+      empty.setTextSize(10f);
+      container.addView(empty);
+      return;
+    }
+    for (int slot = 0; slot < drnasStrip.size(); slot++) {
+      final int index = slot;
+      final String label = drnasStrip.labelAt(slot);
+      final LinearLayout line = new LinearLayout(this);
+      line.setGravity(Gravity.CENTER_VERTICAL);
+      final Button left = drnasSmallKey("\u25C0", 0, 0, line);
+      left.setEnabled(slot > 0);
+      left.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
+          "Move earlier: ", "Pomakni ranije: ") + label);
+      left.setOnClickListener(v -> {
+        if (drnasStrip.move(index, -1)) {
+          drnasSaveShortcutStrip();
+          drnasApplyShortcutStrip();
+          drnasBuildStripArranger(container);
+        }
+      });
+      final Button right = drnasSmallKey("\u25B6", 0, 0, line);
+      right.setEnabled(slot < drnasStrip.size() - 1);
+      right.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
+          "Move later: ", "Pomakni kasnije: ") + label);
+      right.setOnClickListener(v -> {
+        if (drnasStrip.move(index, 1)) {
+          drnasSaveShortcutStrip();
+          drnasApplyShortcutStrip();
+          drnasBuildStripArranger(container);
+        }
+      });
+      final Button toggle = drnasSmallKey(drnasStrip.isHidden(slot) ? "+" : "\u2715", 0, 0, line);
+      toggle.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
+          "Show or hide: ", "Prikaži ili sakrij: ") + label);
+      toggle.setOnClickListener(v -> {
+        drnasStrip.toggleHidden(index);
+        drnasSaveShortcutStrip();
+        drnasApplyShortcutStrip();
+        drnasBuildStripArranger(container);
+      });
+      final TextView name = drnasUiLabel(label);
+      name.setTextSize(11f);
+      if (drnasStrip.isHidden(slot)) {
+        name.setAlpha(0.45f);
+      }
+      name.setPadding(dpDrnas(6), 0, 0, 0);
+      line.addView(name, new LinearLayout.LayoutParams(0, dpDrnas(34), 1f));
+      container.addView(line);
+    }
+    final Button reset = drnasSmallKey(DrnasLanguage.text(BlenderActivity.this,
+        "Reset shortcut strip", "Vrati zadanu traku prečaca"), 0, 0, container);
+    reset.setOnClickListener(v -> {
+      drnasStrip.reset();
+      drnasSaveShortcutStrip();
+      drnasApplyShortcutStrip();
+      drnasBuildStripArranger(container);
+    });
+  }
+
   private void installDrnasLayoutOptions(LinearLayout options) {
     options.addView(drnasUiLabel(DrnasLanguage.text(BlenderActivity.this,
         "CONTROL LAYOUT PRESETS", "PRESETI RASPOREDA KONTROLA")));
@@ -577,4 +766,11 @@
         "Zakljucane tipke imaju tocku; Clr otpusta sve"));
     hapticsNote.setTextSize(10f);
     options.addView(hapticsNote);
+
+    options.addView(drnasUiLabel(DrnasLanguage.text(BlenderActivity.this,
+        "SHORTCUT STRIP ORDER", "REDOSLIJED TRAKE PREČACA")));
+    final LinearLayout stripArranger = new LinearLayout(this);
+    stripArranger.setOrientation(LinearLayout.VERTICAL);
+    options.addView(stripArranger);
+    drnasBuildStripArranger(stripArranger);
   }
