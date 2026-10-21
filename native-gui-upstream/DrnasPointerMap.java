@@ -117,7 +117,8 @@ public final class DrnasPointerMap {
     if (mode == MODE_SUBRECT) {
       return clamp(viewOriginX + vx, maxNativeX());
     }
-    return vx * maxNativeX() / maxViewX();
+    // A window that is still 1 px wide (not measured yet) must not produce 0/0 = NaN.
+    return maxViewX() <= 0f ? 0f : vx * maxNativeX() / maxViewX();
   }
 
   public float nativeY(float y) {
@@ -125,7 +126,7 @@ public final class DrnasPointerMap {
     if (mode == MODE_SUBRECT) {
       return clamp(viewOriginY + vy, maxNativeY());
     }
-    return vy * maxNativeY() / maxViewY();
+    return maxViewY() <= 0f ? 0f : vy * maxNativeY() / maxViewY();
   }
 
   /** Native x -> view x, for drawing the cursor where Blender actually points. */
@@ -134,7 +135,7 @@ public final class DrnasPointerMap {
     if (mode == MODE_SUBRECT) {
       return clamp(nx - viewOriginX, maxViewX());
     }
-    return nx * maxViewX() / maxNativeX();
+    return maxNativeX() <= 0f ? 0f : nx * maxViewX() / maxNativeX();
   }
 
   public float viewY(float y) {
@@ -142,7 +143,7 @@ public final class DrnasPointerMap {
     if (mode == MODE_SUBRECT) {
       return clamp(ny - viewOriginY, maxViewY());
     }
-    return ny * maxViewY() / maxNativeY();
+    return maxNativeY() <= 0f ? 0f : ny * maxViewY() / maxNativeY();
   }
 
   /**
