@@ -328,13 +328,13 @@
     drnasStudioGrips.add(grip);
   }
 
-  private boolean drnasStudioDragGroup(android.widget.TextView grip, android.view.View group,
+  private boolean drnasStudioDragGroup(android.view.View grip, android.view.View group,
                                         String key, android.view.MotionEvent e) {
     if (!drnasStudioEditMode) return false;
     switch (e.getActionMasked()) {
       case android.view.MotionEvent.ACTION_DOWN:
         grip.setAlpha(1f);
-        grip.setTextColor(DRNAS_STUDIO_INK);
+        ((android.widget.TextView) grip).setTextColor(DRNAS_STUDIO_INK);
         grip.setTag(new Object[] {grip.getTag(), e.getRawX(), e.getRawY()});
         return true;
       case android.view.MotionEvent.ACTION_MOVE: {
