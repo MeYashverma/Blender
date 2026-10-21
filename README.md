@@ -20,8 +20,13 @@ What the layer adds:
   press-and-hold and double-tap latching with visible latched state.
 * **Navigation widget**: ORBIT/PAN pads, zoom, Frame Selected/All, Front/Right/Top (+Ctrl variants),
   Perspective/Ortho, User view — disabled with a reason when the running library cannot deliver them.
-* **Keyboard strip extras**: Backspace, arrows, hide-keyboard, "Clr" release-all, Save As; modifiers
-  stay momentary on hold, latched on double tap. IME text entry is unchanged.
+* **Keyboard strip**: Backspace, arrows, hide-keyboard, "Clr" release-all, Redo, Save As;
+  modifiers stay momentary on hold, latched on double tap. IME text entry is unchanged, and view
+  keys refuse to fire while the soft keyboard is up so they cannot be typed into a text field.
+* **Reorderable shortcut strip**: every button can be moved earlier/later or hidden from the
+  settings panel, persisted, with a reset that restores the shipped order.
+* **Per-gesture switches**: two-finger orbit, pinch zoom, three-finger pan and two-finger-tap
+  right click can each be disabled, with a sensitivity slider for the recognition threshold.
 * **Layout presets and clamping**: six presets, reset, hide/show, and safe-area clamping so a group
   can never become unreachable after rotation, resize, cutout or system-gesture changes.
 * **Native fixes**: middle button, Shift hold, horizontal wheel, and the F1–F12 / numpad / Home keys

@@ -23,7 +23,13 @@ pinned at `simfeo/blender` `d93bd33cba768e19ee4387a31c0ea137ee2f0047`.
    smaller window and the arithmetic was duplicated in three places. Replaced by one tested model
    (`DrnasPointerMap`) with an explicit `FIT` (uniform) and `SUBRECT` (1:1 + offset) mode; the
    pointer is stored in native coordinates only and the sprite is derived from them.
-4. **Nothing released held input on focus loss.** `onPause` released LMB/RMB only; a latched button
+4. **`DrnasPointerMap` returned NaN before the window was measured.** An unmeasured view is 1 px
+   wide, so the fit conversion divided by a zero span. Any code that ran before the first layout
+   pass would have placed the pointer at NaN. The map is now inert until both rectangles are known.
+5. **A keyword used as an identifier.** `float native = ...` in a test is rejected by `javac`
+   because `native` is a modifier. Caught by the new CI compile, and the local verifier now scans
+   declarations for reserved words so it cannot recur.
+6. **Nothing released held input on focus loss.** `onPause` released LMB/RMB only; a latched button
    or an in-flight gesture survived a dialog, the notification shade or a system gesture. Every
    held button/modifier is now released on `onPause`, `onStop`, focus loss, `ACTION_CANCEL` and
    mode switches.
@@ -54,6 +60,13 @@ pinned at `simfeo/blender` `d93bd33cba768e19ee4387a31c0ea137ee2f0047`.
 * Keyboard strip: Backspace, four arrows, "Kb ✕" (hide the Android keyboard), "Clr"
   (release every latched key and button). Modifier keys keep press-and-hold = momentary,
   double-tap = latch, tap = unlock. Text entry still uses `nativeOnCommitText`.
+* Shortcut strip: every shipped button can be moved earlier/later and shown/hidden from the
+  settings panel, persisted, with a reset; the shipped list can never be hidden completely.
+* Gesture switches: two-finger orbit, pinch zoom, three-finger pan and two-finger-tap right click
+  can each be disabled independently, and a sensitivity slider changes how far a finger must travel
+  before a gesture starts (so accidental drags can be tuned out).
+* View and frame keys refuse to fire while the Android keyboard is up: a numpad key would otherwise
+  be typed into Blender's own text field instead of framing the view.
 * Layout: six presets (two thumbs, one hand, compact, large targets, tablet, external
   mouse+keyboard), reset, hide/show, per-group geometry/opacity, and automatic clamping so a group
   can never end up unreachable after a rotation, resize, cutout or system-gesture inset change.

@@ -170,6 +170,14 @@ check("drnasBuildStripArranger" in activity,
 check("KEYCODE_MOVE_HOME" in activity, "Frame All must use the Home key")
 check("KEYCODE_Z,\n        android.view.KeyEvent.META_CTRL_ON | android.view.KeyEvent.META_SHIFT_ON"
       in activity, "Redo must be present")
+check("installDrnasGestureOptions(optionRows)" in activity
+      or "installDrnasGestureOptions(options)" in activity,
+      "gesture switches must be reachable from the settings panel")
+check('"gesture_orbit"' in activity and '"gesture_pinch"' in activity
+      and '"gesture_pan"' in activity,
+      "orbit, pinch and pan must be independently configurable")
+check("MODE_SUBRECT" in activity,
+      "a pad inside a smaller floating host must map 1:1 from its own origin")
 check("drnasTyping()" in activity,
       "view keys must be blocked while a text field is being edited")
 check("badge.setOnLongClickListener" in activity,

@@ -66,12 +66,14 @@
     final boolean canOrbit = drnasHasCapability(DRNAS_CAP_MIDDLE);
     final boolean canPan = canOrbit && drnasHasCapability(DRNAS_CAP_SHIFT);
     drnasGestures = new DrnasGestureEngine(drnasGestureSink);
-    drnasGestures.setDragSlop(android.view.ViewConfiguration.get(this).getScaledTouchSlop());
-    drnasGestures.setTwoFingerOrbit(canOrbit);
-    drnasGestures.setThreeFingerPan(canPan);
-    drnasGestures.setPinchZoom(true);
-    drnasGestures.setTwoFingerTapRightClick(true);
-    drnasGestures.setZoomNotchesPerPixel(0.02f);
+    drnasGestures.setDragSlop(drnasGestureSlop());
+    drnasGestures.setDecideSlop(drnasGestureSlop() * 1.5f);
+    drnasGestures.setTwoFingerOrbit(canOrbit && drnasPrefs.getBoolean("gesture_orbit", true));
+    drnasGestures.setThreeFingerPan(canPan && drnasPrefs.getBoolean("gesture_pan", true));
+    drnasGestures.setPinchZoom(drnasPrefs.getBoolean("gesture_pinch", true));
+    drnasGestures.setTwoFingerTapRightClick(drnasPrefs.getBoolean("gesture_rmb", true));
+    drnasGestures.setZoomNotchesPerPixel(
+        Math.max(0.005f, Math.min(0.08f, drnasPrefs.getInt("zoom_rate", 2) / 100f)));
     drnasTouchReady = true;
     drnasSyncPointerGeometry();
     if (drnasInputMode == DRNAS_MODE_RELATIVE) {
@@ -79,6 +81,32 @@
       drnasPointerX = drnasPadMotion.x();
       drnasPointerY = drnasPadMotion.y();
     }
+  }
+
+  /**
+   * Finger travel before a gesture is recognised. The sensitivity preference scales it, so a user
+   * who keeps triggering drags by accident can raise the threshold without touching code.
+   */
+  private float drnasGestureSlop() {
+    final int percent = Math.max(50, Math.min(200, drnasPrefs.getInt("gesture_sensitivity", 100)));
+    return android.view.ViewConfiguration.get(this).getScaledTouchSlop() * 100f / percent;
+  }
+
+  /** Re-applies every gesture preference and capability gate without rebuilding the overlay. */
+  private void drnasApplyGesturePrefs() {
+    if (drnasGestures == null) {
+      return;
+    }
+    final boolean canOrbit = drnasHasCapability(DRNAS_CAP_MIDDLE);
+    final boolean canPan = canOrbit && drnasHasCapability(DRNAS_CAP_SHIFT);
+    drnasGestures.setDragSlop(drnasGestureSlop());
+    drnasGestures.setDecideSlop(drnasGestureSlop() * 1.5f);
+    drnasGestures.setTwoFingerOrbit(canOrbit && drnasPrefs.getBoolean("gesture_orbit", true));
+    drnasGestures.setThreeFingerPan(canPan && drnasPrefs.getBoolean("gesture_pan", true));
+    drnasGestures.setPinchZoom(drnasPrefs.getBoolean("gesture_pinch", true));
+    drnasGestures.setTwoFingerTapRightClick(drnasPrefs.getBoolean("gesture_rmb", true));
+    drnasGestures.setZoomNotchesPerPixel(
+        Math.max(0.005f, Math.min(0.08f, drnasPrefs.getInt("zoom_rate", 2) / 100f)));
   }
 
   /** Refreshes the single coordinate model from the current window geometry. */
@@ -94,7 +122,20 @@
     final int viewHeight = pad != null && pad.getHeight() > 0 ? pad.getHeight() : nativeHeight;
     drnasMap.setNativeSize(nativeWidth, nativeHeight);
     drnasMap.setViewSize(viewWidth, viewHeight);
-    drnasMap.setMode(DrnasPointerMap.MODE_FIT);
+    // A pad that covers the whole surface is mapped by fitting. A pad that sits inside a smaller
+    // floating host (dialog, shrunken window) must be mapped 1:1 from its own origin, otherwise a
+    // stretched display would apply the scale twice.
+    if (pad != null && pad.getWidth() > 0
+        && (pad.getWidth() < nativeWidth - 1 || pad.getHeight() < nativeHeight - 1)) {
+      final int[] padLocation = new int[2];
+      final int[] decorLocation = new int[2];
+      pad.getLocationOnScreen(padLocation);
+      decor.getLocationOnScreen(decorLocation);
+      drnasMap.setMode(DrnasPointerMap.MODE_SUBRECT);
+      drnasMap.setViewOrigin(padLocation[0] - decorLocation[0], padLocation[1] - decorLocation[1]);
+    } else {
+      drnasMap.setMode(DrnasPointerMap.MODE_FIT);
+    }
     drnasPadMotion.setBounds(drnasMap.maxNativeX(), drnasMap.maxNativeY());
     drnasPadMotion.setSpeed(Math.max(0.25f, Math.min(3f, drnasMouseSpeed)));
     drnasPadMotion.setAcceleration(drnasPrefs.getInt("pointer_acceleration", 35) / 100f);

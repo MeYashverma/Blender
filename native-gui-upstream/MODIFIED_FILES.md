@@ -12,8 +12,9 @@ except through `patch_native_ghost.py` (pre-existing) and `patch_native_touch_ex
 | `DrnasGestureEngine.java` | Pointer-id touch recogniser → real mouse input (tap/drag/orbit/pinch/pan/RMB), guaranteed press/release balance, slop and gesture classification, configurable features. |
 | `DrnasRelativePad.java` | Relative pointer motion: speed, acceleration, sub-pixel accumulation, surface clamping, edge reach. |
 | `DrnasMouseState.java` | Independent LMB/RMB/MMB state, momentary click vs. latch, `releaseAll()`, middle-button capability gating. |
+| `DrnasShortcutStrip.java` | Persisted order and visibility of the shortcut strip, tolerant of stale or corrupt preferences, never hides the last button. |
 | `DrnasControlLayout.java` | Group geometry/persistence model, safe-area clamping, six presets, tolerant decoding and migration of saved layouts. |
-| `DrnasPointerMapTest.java`, `DrnasGestureEngineTest.java`, `DrnasRelativePadTest.java`, `DrnasMouseStateTest.java`, `DrnasControlLayoutTest.java` | Automated tests: mapping arithmetic, every gesture transition, acceleration/edge reach, button independence/latching, persistence/clamping/presets. |
+| `DrnasPointerMapTest.java`, `DrnasGestureEngineTest.java`, `DrnasRelativePadTest.java`, `DrnasMouseStateTest.java`, `DrnasControlLayoutTest.java`, `DrnasShortcutStripTest.java` | Automated tests: mapping arithmetic, every gesture transition, acceleration/edge reach, button independence/latching, persistence/clamping/presets. |
 
 ## Added — Android overlay fragments (injected, not compiled standalone)
 

@@ -636,6 +636,61 @@
     });
   }
 
+
+  /**
+   * Gesture switches. Every gesture can be turned off independently: a user who keeps orbiting by
+   * accident while scrolling, or who does not want pinching to zoom, can disable exactly that one
+   * without losing the others.
+   */
+  private void installDrnasGestureOptions(LinearLayout options) {
+    options.addView(drnasUiLabel(DrnasLanguage.text(BlenderActivity.this,
+        "GESTURES", "GESTE")));
+    final String[] keys = {"gesture_orbit", "gesture_pinch", "gesture_pan", "gesture_rmb"};
+    final String[] names = {
+        DrnasLanguage.text(BlenderActivity.this, "Two fingers: orbit", "Dva prsta: rotacija"),
+        DrnasLanguage.text(BlenderActivity.this, "Pinch: zoom", "Štipanje: zum"),
+        DrnasLanguage.text(BlenderActivity.this, "Three fingers: pan", "Tri prsta: pomicanje"),
+        DrnasLanguage.text(BlenderActivity.this, "Two-finger tap: right click",
+            "Dodir s dva prsta: desni klik")};
+    for (int i = 0; i < keys.length; i++) {
+      final String key = keys[i];
+      final android.widget.Switch toggle = new android.widget.Switch(this);
+      toggle.setText(names[i]);
+      toggle.setTextColor(drnasTextWhite);
+      toggle.setTextSize(12f);
+      toggle.setChecked(drnasPrefs.getBoolean(key, true));
+      toggle.setOnCheckedChangeListener((v, enabled) -> {
+        drnasPrefs.edit().putBoolean(key, enabled).apply();
+        drnasApplyGesturePrefs();
+      });
+      options.addView(toggle);
+    }
+    final TextView sensitivityLabel = drnasUiLabel(DrnasLanguage.text(BlenderActivity.this,
+        "Gesture sensitivity: ", "Osjetljivost gesti: ")
+        + drnasPrefs.getInt("gesture_sensitivity", 100) + "%");
+    options.addView(sensitivityLabel);
+    final SeekBar sensitivity = new SeekBar(this);
+    sensitivity.setMax(150);
+    sensitivity.setProgress(Math.max(0, Math.min(150, drnasPrefs.getInt("gesture_sensitivity", 100) - 50)));
+    sensitivity.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
+        "Lower values require a longer finger movement before a gesture starts",
+        "Niže vrijednosti traže dulje pomicanje prsta prije geste"));
+    sensitivity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+      public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
+        final int percent = value + 50;
+        sensitivityLabel.setText(DrnasLanguage.text(BlenderActivity.this,
+            "Gesture sensitivity: ", "Osjetljivost gesti: ") + percent + "%");
+        if (fromUser) {
+          drnasPrefs.edit().putInt("gesture_sensitivity", percent).apply();
+          drnasApplyGesturePrefs();
+        }
+      }
+      public void onStartTrackingTouch(SeekBar bar) {}
+      public void onStopTrackingTouch(SeekBar bar) {}
+    });
+    options.addView(sensitivity, new LinearLayout.LayoutParams(-1, dpDrnas(38)));
+  }
+
   private void installDrnasLayoutOptions(LinearLayout options) {
     options.addView(drnasUiLabel(DrnasLanguage.text(BlenderActivity.this,
         "CONTROL LAYOUT PRESETS", "PRESETI RASPOREDA KONTROLA")));
@@ -773,4 +828,6 @@
     stripArranger.setOrientation(LinearLayout.VERTICAL);
     options.addView(stripArranger);
     drnasBuildStripArranger(stripArranger);
+
+    installDrnasGestureOptions(options);
   }
