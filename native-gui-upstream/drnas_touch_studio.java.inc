@@ -303,10 +303,14 @@
     scroller.addView(row, new android.widget.HorizontalScrollView.LayoutParams(-2, drnasStudioDp(48)));
     int screenDp = Math.round(getResources().getDisplayMetrics().widthPixels /
         getResources().getDisplayMetrics().density);
-    int rowWidth = Math.max(180, Math.min(500, screenDp - 154 - 104 - 36));
+    // Reserve the real mouse-dock and viewport-dock widths plus an 8dp gap.
+    // Center the shortcut strip in the remaining safe corridor so compact screens do not overlap.
+    int leftSafeDp = 10 + 218 + 8;
+    int rightSafeDp = 10 + 104 + 8;
+    int rowWidth = Math.max(120, Math.min(500, screenDp - leftSafeDp - rightSafeDp));
     drnasStudioAddGroup("tools", "TOOLS", scroller,
         android.view.Gravity.CENTER_HORIZONTAL | android.view.Gravity.BOTTOM,
-        0, 0, 0, 12, rowWidth);
+        leftSafeDp, 0, rightSafeDp, 12, rowWidth);
   }
 
   private void drnasStudioAddTool(android.widget.LinearLayout row, String title, String key,
