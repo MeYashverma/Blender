@@ -161,6 +161,8 @@ check("AKEYCODE_NUMPAD_0 && keycode <= AKEYCODE_NUMPAD_9" in system,
 check("AKEYCODE_MOVE_HOME" in system, "native conversion must map Home")
 check("AKEYCODE_PERIOD" in system and "GHOST_kKeyPeriod" in system,
       "numeric entry needs the period key")
+check("badge.setOnLongClickListener" in activity,
+      "hiding the overlay must leave a visible way to restore it")
 check('"haptics"' in activity, "haptic feedback must be configurable and disable-able")
 check("KEYCODE_S,\n        android.view.KeyEvent.META_CTRL_ON | android.view.KeyEvent.META_SHIFT_ON"
       in activity, "Save As shortcut must be present")

@@ -297,13 +297,16 @@
     }
     final boolean relative = drnasInputMode == DRNAS_MODE_RELATIVE;
     drnasModeBadge.setText(relative ? "PAD \u25CF" : "TOUCH \u25CB");
-    drnasModeBadge.setContentDescription(relative
+    drnasModeBadge.setContentDescription((relative
         ? DrnasLanguage.text(BlenderActivity.this,
             "Virtual touchpad mode. Tap to switch to direct touch.",
             "Nacin virtualnog touchpada. Dodirni za izravni dodir.")
         : DrnasLanguage.text(BlenderActivity.this,
             "Direct touch mode. Tap to switch to virtual touchpad.",
-            "Izravni dodir. Dodirni za virtualni touchpad."));
+            "Izravni dodir. Dodirni za virtualni touchpad."))
+        + DrnasLanguage.text(BlenderActivity.this,
+            " Long press to show or hide the controls.",
+            " Dugo drzi za prikaz ili skrivanje kontrola."));
     drnasModeBadge.setActivated(relative);
   }
 
@@ -327,6 +330,12 @@
     badge.setBackground(drnasPill(Color.argb(228, 16, 40, 60)));
     badge.setOnClickListener(v -> drnasSetInputMode(
         drnasInputMode == DRNAS_MODE_RELATIVE ? DRNAS_MODE_DIRECT : DRNAS_MODE_RELATIVE, true));
+    /* The badge is the only control that stays visible when everything else is hidden, so it is
+     * also the way back: long press hides or restores the rest of the overlay. */
+    badge.setOnLongClickListener(v -> {
+      drnasToggleOverlay();
+      return true;
+    });
     drnasModeBadge = badge;
     drnasModeChrome = badge;
     final FrameLayout.LayoutParams location = new FrameLayout.LayoutParams(
