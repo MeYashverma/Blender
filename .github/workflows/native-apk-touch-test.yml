@@ -134,19 +134,31 @@ jobs:
       - name: Report build diagnostics
         if: failure()
         run: |
-          set -uo pipefail
+          set +e
+          echo "pwd=$(pwd)"
+          ls -l build 2>&1 | head -5
           f=build/native-build.log
-          test -f "$f" || exit 0
+          if [ ! -f "$f" ]; then
+            echo "::error title=native build::no build log was produced"
+            exit 0
+          fi
           echo "log lines: $(wc -l < "$f")"
-          # Surface the first real errors instead of the whole log, which lives on blob storage.
-          grep -nE 'error:|Error [0-9]|FAILED:|fatal error|cmake.*Error|No space left' "$f" \
-            | head -40 | while IFS= read -r line; do
-            echo "::error title=native build::$(printf '%s' "$line" | tr -d '%,' | cut -c1-400)"
-          done
-          echo "--- tail ---"
-          tail -40 "$f" | while IFS= read -r line; do
-            echo "::warning title=build tail::$(printf '%s' "$line" | tr -d '%,' | cut -c1-400)"
-          done
+          { grep -nE 'error|Error|FAILED|fatal|No space|Killed' "$f" || true; } \
+            | head -30 | cut -c1-350 | tee /tmp/errs.txt
+          while IFS= read -r line; do
+            echo "::error title=native build::$(printf '%s' "$line" | tr -d '%,\r')"
+          done < /tmp/errs.txt
+          echo "--- last 30 lines ---"
+          tail -30 "$f" | cut -c1-350
+
+      - name: Upload the build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-build-log-${{ github.run_id }}
+          path: build/native-build.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Verify the APK, its signature and the native input entrypoints
         run: |
