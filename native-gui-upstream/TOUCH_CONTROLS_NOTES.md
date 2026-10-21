@@ -91,3 +91,26 @@ existing `nativeOnKey` path for Backspace/Enter — the overlay never fakes text
 Modifiers are momentary on press-and-hold, latched on double-tap, and released by "Clr". The new
 arrow/Backspace/"Kb ✕" keys call the same bridge, and `showKeyboard()`/`hideKeyboard()` keep Android
 focus behaviour unchanged.
+
+## Shortcut strip contract
+
+* Every shipped button can be moved earlier/later and hidden from the settings panel; the order and
+  the hidden set are stored in the `shortcut_strip` preference as `order|hidden`.
+* Decoding is tolerant: labels from another build are dropped, labels added by a newer build are
+  appended, duplicates collapse, and at least one button always stays visible.
+* The strip itself is not rebuilt - the same `Button` objects are reordered inside their rows, so
+  key bindings, latches and listeners survive an arrangement change.
+
+## Gesture switches
+
+`gesture_orbit`, `gesture_pinch`, `gesture_pan` and `gesture_rmb` each enable one recogniser, and
+`gesture_sensitivity` (50-200 %) scales the touch slop; `zoom_rate` sets wheel notches per pinch
+pixel and `pointer_acceleration` sets the extra speed for fast swipes. A capability that the
+running library cannot provide disables its switch content, it never silently fakes the gesture.
+
+## While a text field is being edited
+
+If the soft keyboard is on screen, the navigation widget's keys (frame, axis, perspective) refuse
+to fire and flash a short refusal instead. A numpad key would otherwise be typed into Blender's own
+text field. The gesture pads and the pointer keep working, because moving the mouse is exactly what
+a text field expects.

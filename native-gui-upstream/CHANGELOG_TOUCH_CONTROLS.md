@@ -75,7 +75,7 @@ pinned at `simfeo/blender` `d93bd33cba768e19ee4387a31c0ea137ee2f0047`.
 * `patch_native_touch_extra.py` — deterministic native extension (actions 8–12, extended keycodes,
   `nativeDrnasCapabilities()`), anchored with `once()` assertions and self-checks.
 * `patch_drnas_touch_layer.py` — deterministic Java integration; every anchor must occur exactly
-  once, superseded code must disappear, and the five logic classes are installed into the APK tree.
+  once, superseded code must disappear, and the six logic classes are installed into the APK tree.
 * `verify_touch_controls.py` — cross-language contract gate (Java action numbers vs. native
   dispatch, capability bits on both sides, dock/keyboard completeness, release paths, one definition
   of each lifecycle method, Android-free logic classes, hosted tests).

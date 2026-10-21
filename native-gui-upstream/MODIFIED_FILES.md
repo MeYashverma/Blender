@@ -28,7 +28,7 @@ except through `patch_native_ghost.py` (pre-existing) and `patch_native_touch_ex
 | File | Why |
 |------|-----|
 | `patch_native_touch_extra.py` | Native extension: MMB (8/9), Shift hold (10/11), horizontal wheel (12), F1–F12/numpad/Home/End/PageUp/PageDown/punctuation keycodes, `nativeDrnasCapabilities()` JNI. Fail-closed anchors and self-checks. |
-| `patch_drnas_touch_layer.py` | Java integration: removes the superseded trackpad/emitter/pointer mapping, inserts the new layer, adds MMB + wheel to the dock, nav widget and badge, lifecycle hooks, layout options and keyboard extras; installs the five logic classes into the APK tree. Fail-closed anchors + post-validation. |
+| `patch_drnas_touch_layer.py` | Java integration: removes the superseded trackpad/emitter/pointer mapping, inserts the new layer, adds MMB + wheel to the dock, nav widget and badge, lifecycle hooks, layout options and keyboard extras; installs the six logic classes into the APK tree. Fail-closed anchors + post-validation. |
 | `verify_touch_controls.py` | Static contract gate across Java and C++ (action numbers, capability bits, dock completeness, keyboard reachability, release paths, single definitions, Android-free logic, test presence). |
 | `run_input_tests.sh` | `javac`/`java` runner for all Android-free input tests. |
 | `.github/workflows/native-touch-controls.yml` | Runs the full patch chain, the tests, the verifier and a real `javac` compile of the patched activity against `platforms;android-35/android.jar`. |
