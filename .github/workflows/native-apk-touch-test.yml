@@ -126,9 +126,27 @@ jobs:
           ANDROID_NDK_VERSION: '30.0.16248370'
         run: |
           set -euxo pipefail
+          mkdir -p build
           cd upstream
-          bash build_files/android/build_apk.sh lite
+          bash build_files/android/build_apk.sh lite 2>&1 | tee ../build/native-build.log
           test -s ../blender_build_android/android_apk_stage_lite/blender-lite.apk
+
+      - name: Report build diagnostics
+        if: failure()
+        run: |
+          set -uo pipefail
+          f=build/native-build.log
+          test -f "$f" || exit 0
+          echo "log lines: $(wc -l < "$f")"
+          # Surface the first real errors instead of the whole log, which lives on blob storage.
+          grep -nE 'error:|Error [0-9]|FAILED:|fatal error|cmake.*Error|No space left' "$f" \
+            | head -40 | while IFS= read -r line; do
+            echo "::error title=native build::$(printf '%s' "$line" | tr -d '%,' | cut -c1-400)"
+          done
+          echo "--- tail ---"
+          tail -40 "$f" | while IFS= read -r line; do
+            echo "::warning title=build tail::$(printf '%s' "$line" | tr -d '%,' | cut -c1-400)"
+          done
 
       - name: Verify the APK, its signature and the native input entrypoints
         run: |
