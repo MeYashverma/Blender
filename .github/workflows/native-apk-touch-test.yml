@@ -16,6 +16,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
   build-apk:
@@ -133,28 +135,30 @@ jobs:
 
       - name: Report build diagnostics
         if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set +e
           f=build/native-build.log
-          ls -l build 2>&1 | head -5
-          if [ ! -f "$f" ]; then
-            echo "::error title=native build::no build log was produced"
-            exit 0
-          fi
-          echo "log lines: $(wc -l < "$f")"
-          # The runner log and artifacts live on storage this environment cannot read, so every
-          # diagnostic has to be an annotation: the failing command plus its surrounding output.
-          nl -ba "$f" | grep -E 'FAILED:|error:|Error 1|CMake Error|No space left|Killed|undefined reference|undefined symbol' \
-            | grep -vE '\.svg|\.cc\.o$|error_handling|status_error' \
-            | tail -20 | cut -c1-340 > /tmp/hits.txt
-          while IFS= read -r line; do
-            echo "::error title=native build::$(printf '%s' "$line" | tr -d '%\r')"
-          done < /tmp/hits.txt
-          echo "--- tail 40 ---"
-          nl -ba "$f" | tail -40 | cut -c1-340 > /tmp/tail.txt
-          while IFS= read -r line; do
-            echo "::error title=native build tail::$(printf '%s' "$line" | tr -d '%\r')"
-          done < /tmp/tail.txt
+          {
+            echo "### Native APK build failed (run ${{ github.run_id }})"
+            echo ""; echo '```'
+            df -h / | tail -2
+            echo ""
+            echo "log lines: $(wc -l < "$f" 2>/dev/null)"
+            echo "--- failing targets ---"
+            grep -nE 'FAILED:|error:|CMake Error|No space left|Killed|undefined reference' "$f" \
+              | grep -vE '\.svg|\.cc\.o$' | head -15
+            echo "--- tail 120 ---"
+            tail -120 "$f"
+            echo '```'
+          } > /tmp/report.md 2>&1
+          cut -c1-500 /tmp/report.md | head -160
+          # The runner logs and artifacts live on storage this environment cannot read, so the
+          # diagnostic is also posted where it can be read: an issue comment on the pull request.
+          gh api "repos/$GH_REPO/issues/1/comments" -F body=@"$(echo /tmp/report.md)" >/dev/null 2>&1 \
+            && echo "posted diagnostics to the pull request"
 
       - name: Upload the build log
         if: always()
