@@ -55,20 +55,40 @@ Bugs the CI compile and tests actually caught (and which were fixed):
 12. Performance impact (the overlay only posts work on events; the wheel repeat is a 110 ms tick
     while a button is held). No frame-time measurement was taken.
 
-## Native APK attempts (2026-10-21)
+## APK build — SUCCEEDED (2026-10-22)
 
-The touch layer needs a `libblender.so` that contains the native input extension, so an APK was
-built from source in CI (`.github/workflows/native-apk-touch-test.yml`). Results so far, all real:
+`DRNAS-Native-Blender-Touch-TEST-arm64.apk`, built from source on CI by
+`.github/workflows/native-apk-touch-test.yml` (run 39719432793) and published as the
+[`touch-test` prerelease](https://github.com/MeYashverma/Blender/releases/tag/touch-test).
 
-| Attempt | Result | Cause found |
-|---------|--------|-------------|
-| 1-2 | compile failed at the GHOST stage | `AKEYCODE_MOVE_HOME` was mapped twice (upstream already handled it) — **fixed**, and the verifier now rejects duplicate key cases |
-| 3-6 | compile reached ~6900/6944 then exited 1 with no compiler error | the failure was in `package.sh`, not the compile: the packaging script (patched by `add_gpu_driver_options.py`) calls the driver/smooth-zoom packagers through `$DRNAS_PATCH_ROOT`, which the new workflow did not export |
-| 7 | same | diagnostics fixed (PR comment + annotations); the actual message is now known |
-| 8 | queued | carries the env fix and a preflight that fails in seconds if any `DRNAS_*` variable `package.sh` uses is unset |
+| Fact | Value |
+|------|-------|
+| Size | 232 930 567 bytes (223 MiB) |
+| SHA-256 | `d7db25590d7183268f49540ab8cf17d167f5c79e5fb3a007bd70224bc73f38c4` |
+| Signed | yes (`apksigner verify` passes) |
+| Identity | `hr.drnas.blendernativealpha10`, versionCode 100, versionName `1.0-alpha` |
+| Native | `lib/arm64-v8a/libblender.so`, ELF aarch64, stripped |
+| Bridge exports | `nativeOnDrnasInput`, `nativeDrnasCapabilities`, `nativeOnKey`, `nativeOnCommitText` |
+| Classes in dex | `DrnasPointerMap`, `DrnasGestureEngine`, `DrnasRelativePad`, `DrnasMouseState`, `DrnasControlLayout`, `DrnasShortcutStrip` (+ the pre-existing GPU/language/splash/input helpers) |
 
-**No APK has been produced yet.** The compile itself works (it reaches the final link), so the
-remaining work is packaging configuration, not source correctness.
+So the native input extension (middle button, Shift hold, horizontal wheel, horizontal scroll,
+F1–F12/numpad/Home keycodes, capability probe) really is in the shipped `libblender.so`, and the
+touch layer really is in the shipped `classes.dex`. This is a *packaged* claim, not a device claim.
+
+### Build failures found and fixed along the way (all real)
+
+| Attempt | Result | Cause |
+|---------|--------|-------|
+| 1–2 | compile failed at GHOST | `AKEYCODE_MOVE_HOME` mapped twice (upstream already handled it). The patch now skips key codes the source already maps, and the verifier rejects duplicates. |
+| 3–7 | compiled to ~6900/6944, then exit 1 with no compiler error | not the compile: `package.sh` (patched by `add_gpu_driver_options.py`) calls the driver/smooth-zoom packagers via `$DRNAS_PATCH_ROOT`, which the workflow never exported. A preflight now checks every `DRNAS_*` variable `package.sh` uses before the build starts. |
+| 8–9 | JVM suite red | two of my own test expectations were wrong: one still asserted the stray-finger bug, the other assumed `clampOffset` guarantees full containment instead of `MIN_VISIBLE_DP` reachability. Both corrected and re-verified by hand. |
+| 10 | **success** | APK built, verified and published. |
+
+### Still not verified
+
+Everything in the list below. Installing this APK is the next step, and no result is claimed until
+someone reports it from a device. Install note: same application id as Alpha 1.0, so uninstall an
+existing Alpha 1.0 with a different signing key first.
 
 ## Remaining blockers and repro steps
 
