@@ -111,12 +111,12 @@ jobs:
             {
               echo '### Android Java compile diagnostics'
               echo '```text'
-              head -80 build/javac.log
+              grep -B2 -A5 -E 'error:|symbol:|location:|required:|found:' build/javac.log | head -100 || tail -50 build/javac.log
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
             while IFS= read -r line; do
               printf '::error title=javac diagnostic::%s\n' "$line"
-            done < <(head -80 build/javac.log)
+            done < <(grep -B2 -A5 -E 'error:|symbol:|location:|required:|found:' build/javac.log | head -100 || tail -50 build/javac.log)
             exit 1
           fi
 
