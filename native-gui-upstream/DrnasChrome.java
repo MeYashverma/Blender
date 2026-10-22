@@ -149,7 +149,7 @@ final class DrnasChrome {
   }
 
   private static Path iconFill(String name, float sizePx) {
-    final String key = name + '*@' + Math.round(sizePx);
+    final String key = name + "*@" + Math.round(sizePx);
     Path cached = PATHS.get(key);
     if (cached != null) {
       return cached;
