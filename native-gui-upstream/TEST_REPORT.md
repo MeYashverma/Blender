@@ -1,6 +1,6 @@
 # Test report — touch control layer
 
-Status: visual-redesign patch chain, source verifiers, Android-free JVM suite, and patched Android Java compilation **PASS in CI** (validation run 39769568381; ARM64 APK build run 39769560464). The actual-app screenshot and physical-device behavior remain **unverified**; no device result is claimed.
+Status: visual-redesign patch chain, source verifiers, Android-free JVM suite, patched Android Java compilation and ARM64 APK build **PASS in CI** (validation run 39769568381; APK build run 39769560464; packaged APK inspected/published by run 39781473949). The actual-app screenshot and physical-device behavior remain **unverified**; no device result is claimed.
 
 ## Visual redesign status (2026-10-22)
 
@@ -84,18 +84,18 @@ Bugs the CI compile and tests actually caught (and which were fixed):
 ## APK build — SUCCEEDED (2026-10-22)
 
 `DRNAS-Native-Blender-Touch-TEST-arm64.apk`, built from source on CI by
-`.github/workflows/native-apk-touch-test.yml` (run 39719432793) and published as the
-[`touch-test` prerelease](https://github.com/MeYashverma/Blender/releases/tag/touch-test).
+`.github/workflows/native-apk-touch-test.yml` (run 39769560464) and published/verified by inspect
+run 39781473949 as the [`touch-test` prerelease](https://github.com/MeYashverma/Blender/releases/tag/touch-test).
 
 | Fact | Value |
 |------|-------|
-| Size | 232 930 567 bytes (223 MiB) |
-| SHA-256 | `d7db25590d7183268f49540ab8cf17d167f5c79e5fb3a007bd70224bc73f38c4` |
+| Size | 232 942 855 bytes (223 MiB) |
+| SHA-256 | `94f368f2a5a407df7c1a46be4b01a194c039f5b9ddbdd848569fae9323b6dd5e` |
 | Signed | yes (`apksigner verify` passes) |
 | Identity | `hr.drnas.blendernativealpha10`, versionCode 100, versionName `1.0-alpha` |
 | Native | `lib/arm64-v8a/libblender.so`, ELF aarch64, stripped |
 | Bridge exports | `nativeOnDrnasInput`, `nativeDrnasCapabilities`, `nativeOnKey`, `nativeOnCommitText` |
-| Classes in dex | `DrnasPointerMap`, `DrnasGestureEngine`, `DrnasRelativePad`, `DrnasMouseState`, `DrnasControlLayout`, `DrnasShortcutStrip` (+ the pre-existing GPU/language/splash/input helpers) |
+| Classes in dex | Input classes plus `DrnasSkin`, `DrnasIcons`, `DrnasChrome`, `DrnasIconTextView`, `DrnasIconButton`, `DrnasOrientationGizmo` (+ pre-existing GPU/language/splash/input helpers) |
 
 So the native input extension (middle button, Shift hold, horizontal wheel, horizontal scroll,
 F1–F12/numpad/Home keycodes, capability probe) really is in the shipped `libblender.so`, and the
@@ -108,7 +108,8 @@ touch layer really is in the shipped `classes.dex`. This is a *packaged* claim, 
 | 1–2 | compile failed at GHOST | `AKEYCODE_MOVE_HOME` mapped twice (upstream already handled it). The patch now skips key codes the source already maps, and the verifier rejects duplicates. |
 | 3–7 | compiled to ~6900/6944, then exit 1 with no compiler error | not the compile: `package.sh` (patched by `add_gpu_driver_options.py`) calls the driver/smooth-zoom packagers via `$DRNAS_PATCH_ROOT`, which the workflow never exported. A preflight now checks every `DRNAS_*` variable `package.sh` uses before the build starts. |
 | 8–9 | JVM suite red | two of my own test expectations were wrong: one still asserted the stray-finger bug, the other assumed `clampOffset` guarantees full containment instead of `MIN_VISIBLE_DP` reachability. Both corrected and re-verified by hand. |
-| 10 | **success** | APK built, verified and published. |
+| 10 | source validation failed | New visual sources exposed an invalid multi-character char literal and wrong `StateListAnimator` package; corrected and recompiled. |
+| 11 | **success** | APK built, signed, inspected for the visual classes and published; checksum recorded above. |
 
 ### Still not verified
 
