@@ -379,7 +379,44 @@
         Math.max(1, Math.round(getResources().getDisplayMetrics().density)));
     bounds.insetTop = drnasSafeInset(true);
     bounds.insetBottom = drnasSafeInset(false);
+    bounds.insetLeft = drnasSafeInsetLeft();
+    bounds.insetRight = drnasSafeInsetRight();
     return bounds;
+  }
+
+  /** Horizontal safe insets (display cutouts on a landscape phone, gesture areas in portrait). */
+  private int drnasSafeInsetLeft() {
+    try {
+      if (android.os.Build.VERSION.SDK_INT >= 30 && getWindow() != null) {
+        final android.view.WindowInsets insets =
+            getWindow().getDecorView().getRootWindowInsets();
+        if (insets != null) {
+          return insets.getInsets(
+              android.view.WindowInsets.Type.displayCutout()
+              | android.view.WindowInsets.Type.systemBars()).left;
+        }
+      }
+    } catch (Throwable ignored) {
+      /* Safe areas are a nicety: never break layout over them. */
+    }
+    return 0;
+  }
+
+  private int drnasSafeInsetRight() {
+    try {
+      if (android.os.Build.VERSION.SDK_INT >= 30 && getWindow() != null) {
+        final android.view.WindowInsets insets =
+            getWindow().getDecorView().getRootWindowInsets();
+        if (insets != null) {
+          return insets.getInsets(
+              android.view.WindowInsets.Type.displayCutout()
+              | android.view.WindowInsets.Type.systemBars()).right;
+        }
+      }
+    } catch (Throwable ignored) {
+      /* As above. */
+    }
+    return 0;
   }
 
   private void drnasClampLayout() {
@@ -404,14 +441,14 @@
     if (panel == null || panel.lastWidth <= 0 || panel.lastHeight <= 0) {
       return;
     }
-    final float visible = Math.max(24f,
-        bounds.density * (float) DrnasControlLayout.MIN_VISIBLE_DP);
     final float baseX = panel.lastX - drnasOffsetX(view);
     final float baseY = panel.lastY - drnasOffsetY(view);
-    final float clampedX = DrnasControlLayout.clampOffset(
-        drnasOffsetX(view), baseX, panel.lastWidth, bounds.width, visible);
-    final float clampedY = DrnasControlLayout.clampOffset(
-        drnasOffsetY(view), baseY, panel.lastHeight, bounds.height, visible);
+    // Insets come from drnasLayoutBounds(), so a panel can never be restored under the status
+    // bar, a cutout or the navigation bar.
+    final float clampedX = DrnasControlLayout.clampInBounds(
+        drnasOffsetX(view), baseX, panel.lastWidth, bounds, true);
+    final float clampedY = DrnasControlLayout.clampInBounds(
+        drnasOffsetY(view), baseY, panel.lastHeight, bounds, false);
     if (clampedX != drnasOffsetX(view)) {
       drnasSetOffsetX(view, clampedX);
     }

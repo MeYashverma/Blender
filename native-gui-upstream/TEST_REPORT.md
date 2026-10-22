@@ -55,6 +55,21 @@ Bugs the CI compile and tests actually caught (and which were fixed):
 12. Performance impact (the overlay only posts work on events; the wheel repeat is a 110 ms tick
     while a button is held). No frame-time measurement was taken.
 
+## Native APK attempts (2026-10-21)
+
+The touch layer needs a `libblender.so` that contains the native input extension, so an APK was
+built from source in CI (`.github/workflows/native-apk-touch-test.yml`). Results so far, all real:
+
+| Attempt | Result | Cause found |
+|---------|--------|-------------|
+| 1-2 | compile failed at the GHOST stage | `AKEYCODE_MOVE_HOME` was mapped twice (upstream already handled it) — **fixed**, and the verifier now rejects duplicate key cases |
+| 3-6 | compile reached ~6900/6944 then exited 1 with no compiler error | the failure was in `package.sh`, not the compile: the packaging script (patched by `add_gpu_driver_options.py`) calls the driver/smooth-zoom packagers through `$DRNAS_PATCH_ROOT`, which the new workflow did not export |
+| 7 | same | diagnostics fixed (PR comment + annotations); the actual message is now known |
+| 8 | queued | carries the env fix and a preflight that fails in seconds if any `DRNAS_*` variable `package.sh` uses is unset |
+
+**No APK has been produced yet.** The compile itself works (it reaches the final link), so the
+remaining work is packaging configuration, not source correctness.
+
 ## Remaining blockers and repro steps
 
 * **Native input extension is not built here.** Middle button (actions 8/9), Shift hold (10/11),

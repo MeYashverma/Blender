@@ -151,6 +151,33 @@ public final class DrnasControlLayout {
     return Math.max(lower, Math.min(upper, desired));
   }
 
+
+  /**
+   * Clamps one axis of a panel that is positioned by an offset from its natural place, honouring
+   * the safe area. The activity used to pass the raw window extent here, which let a restored or
+   * dragged panel settle under the status bar, a cutout or the navigation bar even though the
+   * insets were known. Both axes go through this so the overlay obeys the same contract as
+   * {@link #clampGroup}.
+   *
+   * @param desired    offset the user dragged to (or a stale saved value)
+   * @param base       natural position along this axis, in window coordinates
+   * @param size       panel size in px along this axis
+   * @param bounds     current window bounds including insets
+   * @param horizontal true for x, false for y (insets are vertical on Android)
+   */
+  public static float clampInBounds(float desired, float base, float size, Bounds bounds,
+                                    boolean horizontal) {
+    if (bounds == null) {
+      return sanitise(desired);
+    }
+    final float startInset = horizontal ? bounds.insetLeft : bounds.insetTop;
+    final float endInset = horizontal ? bounds.insetRight : bounds.insetBottom;
+    final float extent = Math.max(1f, (horizontal ? bounds.width : bounds.height)
+                                          - startInset - endInset);
+    final float visible = Math.min(bounds.minVisible(), Math.max(1f, size));
+    return clampOffset(sanitise(desired), base - startInset, size, extent, visible);
+  }
+
   /** Clamps both axes against the current bounds, e.g. after rotating the device. */
   public static void clampGroup(Group group, float baseX, float baseY, float width, float height,
                                 Bounds bounds) {

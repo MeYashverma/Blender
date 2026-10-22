@@ -342,6 +342,40 @@ public class DrnasGestureEngineTest {
     engine.onTouch(DrnasGestureEngine.ACTION_UP, ids(0), coords(100), coords(100), 0, 1260);
     check(rec.count("b1+") == 1 && rec.count("b1-") == 1, "the next tap still works");
 
+
+    // ------------------------------------------------- a stray finger must not kill a drag
+    // Real case: the user is moving an object, brushes the screen with a second finger and lifts
+    // it again. Android delivers POINTER_DOWN then POINTER_UP; the left button must stay down.
+    rec = new Recorder();
+    engine = new DrnasGestureEngine(rec);
+    engine.onTouch(DrnasGestureEngine.ACTION_DOWN, ids(0), coords(100), coords(100), 0, 2000);
+    engine.onTouch(DrnasGestureEngine.ACTION_MOVE, ids(0), coords(160), coords(100), 0, 2050);
+    check(rec.count("b1+") == 1, "the drag starts: " + rec.events);
+    engine.onTouch(DrnasGestureEngine.ACTION_POINTER_DOWN, ids(0, 1),
+        coords(160, 300), coords(100, 300), 1, 2060);
+    engine.onTouch(DrnasGestureEngine.ACTION_POINTER_UP, ids(0, 1),
+        coords(160, 300), coords(100, 300), 1, 2080);
+    check(rec.count("b1-") == 0, "a secondary finger lifting must not release the drag");
+    check(engine.isLeftDown(), "the drag is still held");
+    engine.onTouch(DrnasGestureEngine.ACTION_MOVE, ids(0), coords(200), coords(100), 0, 2100);
+    check(rec.count("b1-") == 0, "the drag continues");
+    engine.onTouch(DrnasGestureEngine.ACTION_UP, ids(0), coords(200), coords(100), 0, 2150);
+    check(rec.count("b1+") == rec.count("b1-"), "the drag ends exactly once: " + rec.events);
+
+    // The finger that owns the drag lifting does end it, even with another finger still down.
+    rec = new Recorder();
+    engine = new DrnasGestureEngine(rec);
+    engine.onTouch(DrnasGestureEngine.ACTION_DOWN, ids(0), coords(100), coords(100), 0, 3000);
+    engine.onTouch(DrnasGestureEngine.ACTION_MOVE, ids(0), coords(160), coords(100), 0, 3050);
+    engine.onTouch(DrnasGestureEngine.ACTION_POINTER_DOWN, ids(0, 1),
+        coords(160, 300), coords(100, 300), 1, 3060);
+    engine.onTouch(DrnasGestureEngine.ACTION_POINTER_UP, ids(0, 1),
+        coords(160, 300), coords(100, 300), 0, 3080);
+    check(rec.count("b1-") == 1 && !engine.isLeftDown(),
+        "lifting the drag finger releases the button: " + rec.events);
+    engine.onTouch(DrnasGestureEngine.ACTION_UP, ids(1), coords(300), coords(300), 0, 3100);
+    check(rec.count("b1+") == rec.count("b1-"), "no second release is emitted");
+
     // Degenerate input must not throw (an event with no pointers, a null batch).
     DrnasGestureEngine quiet = new DrnasGestureEngine(NO_SINK);
     quiet.onTouch(DrnasGestureEngine.ACTION_MOVE, new int[0], new float[0], new float[0], 0, 0);
@@ -349,6 +383,7 @@ public class DrnasGestureEngineTest {
     quiet.releaseAll("empty");
 
     System.out.println("PASS: tap, slop, drag, cancel, orbit, pinch, wheel remainders, "
-        + "two-finger tap, pan, drag safety, configuration, lifecycle release and degenerate input");
+        + "two-finger tap, pan, drag safety, stray-finger drag continuity, configuration, "
+        + "lifecycle release and degenerate input");
   }
 }

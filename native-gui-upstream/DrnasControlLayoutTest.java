@@ -123,6 +123,28 @@ public class DrnasControlLayoutTest {
     check("Tablet".equals(DrnasControlLayout.presetName(DrnasControlLayout.PRESET_TABLET)),
         "preset names are available to the editor");
 
+
+    // 10. Safe-area clamping. The activity used to clamp panels against the raw window size, so a
+    // restored or dragged panel could settle under the status bar, a cutout or the nav bar.
+    Bounds safe = new Bounds(1080, 2400, 3);
+    safe.insetTop = 90;
+    safe.insetBottom = 140;
+    safe.insetRight = 60;
+    float bottom = DrnasControlLayout.clampInBounds(100000f, 100f, 200f, safe, false);
+    check(bottom + 100f + 200f <= 2400f - 140f + 0.01f,
+        "a panel may not slide under the navigation bar");
+    float top = DrnasControlLayout.clampInBounds(-100000f, 400f, 200f, safe, false);
+    check(top + 400f >= 90f - 0.01f, "a panel may not slide under the status bar");
+    float right = DrnasControlLayout.clampInBounds(100000f, 100f, 200f, safe, true);
+    check(right + 100f + 200f <= 1080f - 60f + 0.01f, "the cutout inset is respected");
+    Bounds plain = new Bounds(1080, 2400, 3);
+    near(DrnasControlLayout.clampInBounds(4000f, 100f, 200f, plain, false),
+        DrnasControlLayout.clampOffset(4000f, 100f, 200f, 2400f, Math.min(56 * 3f, 200f)),
+        0.01f, "without insets the helper matches the plain clamp");
+    near(DrnasControlLayout.clampInBounds(Float.NaN, 100f, 200f, safe, false),
+        DrnasControlLayout.clampInBounds(0f, 100f, 200f, safe, false), 0.01f,
+        "a NaN offset is sanitised, not propagated");
+
     System.out.println("PASS: persistence round trip, migration, corruption tolerance, clamping, "
         + "rotation correction, safe-area insets, sanitising and presets");
   }

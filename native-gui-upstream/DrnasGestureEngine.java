@@ -95,6 +95,8 @@ public final class DrnasGestureEngine {
   private float prevCentroidX, prevCentroidY, prevSpread;
   private float zoomRemainder;
   private boolean leftDown, middleDown, shiftDown;
+  /** Pointer id that started the current left-drag; -1 when no drag is running. */
+  private int dragPointerId = -1;
   private boolean gestureClassified;
   private boolean scrollFallback;
   private boolean secondTapPending;
@@ -341,6 +343,7 @@ public final class DrnasGestureEngine {
           lastX = originX;
           lastY = originY;
           leftDown = true;
+          dragPointerId = ids[0];
           state = STATE_DRAG;
           sink.button(BUTTON_LEFT, true);
         }
@@ -354,8 +357,8 @@ public final class DrnasGestureEngine {
     }
 
     if (leftDown) {
-      // Keep following the primary finger of an active drag.
-      final int index = indexOfId(ids[0]);
+      // Keep following the finger that owns the drag, whatever order Android reports.
+      final int index = indexOfId(dragPointerId >= 0 ? dragPointerId : ids[0]);
       if (index >= 0) {
         final float x = xs[index];
         final float y = ys[index];
@@ -459,11 +462,20 @@ public final class DrnasGestureEngine {
     }
 
     if (remaining == 1) {
+      if (leftDown && ids[index] != dragPointerId) {
+        // A secondary finger lifted while the drag finger is still down (a stray touch, or a
+        // second finger that never became a gesture). Dropping the button here would abort the
+        // user's transform mid-drag, so the drag simply resumes.
+        state = STATE_DRAG;
+        gestureClassified = false;
+        return;
+      }
       if (leftDown) {
         // The finger that was dragging left the glass: release before anything else so a
         // cancelled transform can never leave the left button stuck.
         sink.button(BUTTON_LEFT, false);
         leftDown = false;
+        dragPointerId = -1;
         endNavigationGesture();
         state = STATE_IGNORE;
         gestureClassified = false;
@@ -478,6 +490,13 @@ public final class DrnasGestureEngine {
         return;
       }
       state = STATE_IGNORE;
+      return;
+    }
+
+    if (leftDown && ids[index] != dragPointerId && indexOfId(dragPointerId) >= 0) {
+      // The drag finger survived; the extra fingers were incidental. Keep the drag.
+      state = STATE_DRAG;
+      gestureClassified = false;
       return;
     }
 
@@ -498,6 +517,7 @@ public final class DrnasGestureEngine {
         sink.pointer(lastX, lastY, 0f, 0f);
       }
       sink.button(BUTTON_LEFT, false);
+      dragPointerId = -1;
       leftDown = false;
     } else if (state == STATE_TWO_UNDECIDED && gestureClassified == false
         && secondTapPending && twoFingerTapRightClick) {
@@ -512,6 +532,7 @@ public final class DrnasGestureEngine {
   /** Releases every held mouse button and modifier; safe to call at any time. */
   public void releaseAll(String reason) {
     endNavigationGesture();
+    dragPointerId = -1;
     if (leftDown) {
       leftDown = false;
       sink.button(BUTTON_LEFT, false);

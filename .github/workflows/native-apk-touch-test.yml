@@ -67,6 +67,27 @@ jobs:
           grep -Fq 'case 8:' upstream/intern/ghost/intern/GHOST_SystemAndroid.cc
           grep -Fq 'AKEYCODE_NUMPAD_0' upstream/intern/ghost/intern/GHOST_SystemAndroid.cc
 
+      - name: Preflight the packaging variables
+        env:
+          DRNAS_PATCH_ROOT: ${{ github.workspace }}/native-gui-upstream
+          DRNAS_GPU_CACHE: ${{ github.workspace }}/.gpu-driver-cache
+        run: |
+          set -euxo pipefail
+          # Every DRNAS_* variable the patched packager uses must be provided, otherwise the build
+          # wastes an hour and then fails at packaging.
+          vars=$(grep -ohE '\$\{?DRNAS_[A-Z_]+' upstream/build_files/android/apk/package.sh \
+                 | tr -d '${' | sort -u)
+          echo "referenced: $vars"
+          for v in $vars; do
+            if [ -z "${!v:-}" ]; then
+              echo "::error title=packaging preflight::package.sh needs $v and it is not set"
+              exit 1
+            fi
+          done
+          for script in package_gpu_drivers.py package_smooth_zoom_runtime.py; do
+            test -f "native-gui-upstream/$script"
+          done
+
       - name: Free disk space for the native build
         run: |
           set -euxo pipefail
@@ -126,6 +147,11 @@ jobs:
           ANDROID_HOST_CC: gcc-14
           ANDROID_HOST_CXX: g++-14
           ANDROID_NDK_VERSION: '30.0.16248370'
+          # package.sh (patched by add_gpu_driver_options.py) runs the GPU driver and smooth-zoom
+          # packagers by absolute path. Without these the packaging step dies at "unbound
+          # variable" *after* an hour of compiling, so they are set here and preflighted below.
+          DRNAS_PATCH_ROOT: ${{ github.workspace }}/native-gui-upstream
+          DRNAS_GPU_CACHE: ${{ github.workspace }}/.gpu-driver-cache
         run: |
           set -uo pipefail
           mkdir -p build tools
