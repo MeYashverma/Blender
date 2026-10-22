@@ -7,9 +7,10 @@ on:
   push:
     branches: [arena/e8ebe2c9-blender]
     paths:
-      # Anything that can end up in the APK has to rebuild it.
+      # Source, patches and test code rebuild the APK; prose-only changes do not.
       - '.github/workflows/native-apk-touch-test.yml'
       - 'native-gui-upstream/**'
+      - '!native-gui-upstream/*.md'
   workflow_dispatch:
 
 permissions:

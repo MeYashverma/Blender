@@ -1,6 +1,6 @@
 # Test report — touch control layer
 
-Status: prior control implementation **CI-green**; **visual-redesign validation is pending** the current branch run. The patch chain and both source verifiers have passed locally. This sandbox has no JDK, Android SDK, emulator or `adb`, so the JVM suite and APK build must complete in CI. Nothing is claimed from a device.
+Status: visual-redesign patch chain, source verifiers, Android-free JVM suite, and patched Android Java compilation **PASS in CI** (validation run 39769568381; ARM64 APK build run 39769560464). The actual-app screenshot and physical-device behavior remain **unverified**; no device result is claimed.
 
 ## Visual redesign status (2026-10-22)
 
@@ -16,9 +16,9 @@ Status: prior control implementation **CI-green**; **visual-redesign validation 
   reduction, and 120–180 ms feedback. Targets retain 48 dp minimum geometry separately from the
   smaller icons. Switches and SeekBars use the same accent/surface colors.
 * New automated design-system tests cover icon/path coverage, contrast over three viewport
-  luminances, sizing, alpha hierarchy and animation timing. Local tree-sitter parse of the patched
-  activity and all 30 DRNAS Java files passed; both patch verifiers passed. **JVM test execution and
-  Android compilation are pending CI** for this revision.
+  luminances, sizing, alpha hierarchy and animation timing; `DrnasVisualDesignTest` passed in CI.
+  Local tree-sitter parse of the patched activity and all 30 DRNAS Java files passed; both patch
+  verifiers passed. The full activity and overlay Java sources compiled in CI against Android 35.
 * **Actual-app screenshot gate: NOT PASSED.** There is no Android device/emulator in this sandbox.
   The app still needs to be installed and captured on a landscape phone; screenshots are required
   before calling the visual quality gate complete. Do not treat an SVG/mockup as that evidence.
@@ -39,7 +39,8 @@ Status: prior control implementation **CI-green**; **visual-redesign validation 
 | `DrnasGestureEngineTest` — tap, slop, drag, cancel, orbit, pinch, wheel remainders, two-finger tap, pan, drag safety, configuration, lifecycle release, degenerate input | CI (JVM) | PASS |
 | `DrnasShortcutStripTest` — default order, reorder clamping, hide/unhide, persistence round trip, stale and corrupt preferences, escaping | CI (JVM) | PASS |
 | `DrnasGpuPolicyTest` (pre-existing) | CI (JVM) | PASS |
-| `javac` compile of the **patched `BlenderActivity.java` (3 715 lines) and all overlay classes** against `platforms;android-35/android.jar` | CI | PASS |
+| `DrnasVisualDesignTest` — required local vectors/path syntax, viewport contrast, 48 dp target separation, active/idle/minimized opacity, 120–180 ms feedback | CI (JVM) | PASS |
+| `javac` compile of the **patched `BlenderActivity.java` and all overlay classes** against `platforms;android-35/android.jar` | CI | PASS |
 | Pre-existing `verify_alpha_1_0.py` (identity, language, stretch, Alpha 1.0 controls) | CI + local | PASS |
 | Local syntax gate: tree-sitter Java parse of the patched activity and both injected fragments | local | PASS (no error nodes) |
 | Local cross-check: unresolved `drnas*` identifiers and call arity in the patched activity | local | none found |
@@ -50,6 +51,10 @@ Bugs the CI compile and tests actually caught (and which were fixed):
    rectangles are known.
 3. A shortcut-strip test asserted that moving the *last* button further down changes the order; it
    is a correct no-op.
+4. The new icon path cache key used an invalid multi-character Java character literal; fixed to a
+   string literal before the successful compile.
+5. The press animator was initially imported from `android.widget`; CI's Android 35 compile exposed
+   that it belongs to `android.animation`. Corrected, then the full overlay compile passed.
 
 ## Not verified — requires a device or a native rebuild
 
