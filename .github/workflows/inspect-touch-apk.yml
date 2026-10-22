@@ -124,7 +124,9 @@ jobs:
           gh api "repos/${{ github.repository }}/issues/1/comments" -F body=@/tmp/comment.md >/dev/null
 
       - name: Attach to the touch-test prerelease
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+        # Publish when explicitly dispatched with publish=true, or when the pushed commit asks for
+        # it. The tag is a prerelease and clearly labelled as a test build.
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish) || contains(github.event.head_commit.message, '[publish-apk]') }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
