@@ -101,6 +101,7 @@ jobs:
           echo "APK verified"
 
       - name: Report on the pull request
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -115,6 +116,11 @@ jobs:
             echo ""
             echo "Download: [run ${{ steps.pick.outputs.run_id }} artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ steps.pick.outputs.run_id }})"
           } > /tmp/comment.md
+          # On failure /tmp/report.txt may not exist yet; always leave something readable behind.
+          if [ ! -s /tmp/report.txt ]; then
+            { echo "APK verification did not complete."; echo ""; echo "```"; ls -l apk 2>&1; echo "```"; } \
+              >> /tmp/comment.md
+          fi
           gh api "repos/${{ github.repository }}/issues/1/comments" -F body=@/tmp/comment.md >/dev/null
 
       - name: Attach to the touch-test prerelease
