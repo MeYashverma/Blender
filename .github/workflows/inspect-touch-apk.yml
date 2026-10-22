@@ -66,29 +66,39 @@ jobs:
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
-          set -euo pipefail
+          set +e
+          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends binutils unzip file
           APK=apk/DRNAS-Native-Blender-Touch-TEST-arm64.apk
           BT="$ANDROID_HOME/build-tools/35.0.1"
           if [ ! -x "$BT/aapt" ]; then
-            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;35.0.1' >/dev/null
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;35.0.1' >/dev/null 2>&1
           fi
           {
-            echo "package:  $("$BT/aapt" dump badging "$APK" | sed -n '1p')"
             echo "size:     $(du -h "$APK" | cut -f1)"
             echo "sha256:   $(sha256sum "$APK" | cut -d' ' -f1)"
-            echo "libs:"
-            unzip -Z1 "$APK" | grep -E '^lib/arm64-v8a/.*\.so$' | sed 's/^/  /'
-            unzip -p "$APK" lib/arm64-v8a/libblender.so > /tmp/libblender.so
+            echo "signed:   $("$BT/apksigner" verify "$APK" >/dev/null 2>&1 && echo yes || echo no)"
+            echo "identity: $("$BT/aapt" dump badging "$APK" 2>/dev/null | sed -n '1p')"
+            echo "so files:"
+            unzip -Z1 "$APK" 2>/dev/null | grep -E '^lib/arm64-v8a/.*\.so$' | sed 's/^/  /'
+            unzip -p "$APK" lib/arm64-v8a/libblender.so > /tmp/libblender.so 2>/dev/null
+            file /tmp/libblender.so | sed 's/^/lib: /'
             echo "input bridge symbols:"
-            readelf -Ws /tmp/libblender.so \
+            readelf -Ws /tmp/libblender.so 2>/dev/null \
               | grep -E 'nativeOnDrnasInput|nativeDrnasCapabilities|nativeOnCommitText|nativeOnKey' \
               | awk '{print "  " $8}' | sort -u
-            unzip -p "$APK" classes.dex > /tmp/classes.dex
+            unzip -p "$APK" classes.dex > /tmp/classes.dex 2>/dev/null
             echo "input classes in dex:"
-            strings /tmp/classes.dex | grep -E '^(Drnas(PointerMap|GestureEngine|RelativePad|MouseState|ControlLayout|ShortcutStrip))$' \
+            strings /tmp/classes.dex 2>/dev/null \
+              | grep -E '^(Drnas(PointerMap|GestureEngine|RelativePad|MouseState|ControlLayout|ShortcutStrip|InputHold|ZoomSpring))$' \
               | sort -u | sed 's/^/  /'
-          } | tee /tmp/report.txt
+          } > /tmp/report.txt 2>&1
+          cat /tmp/report.txt
           cp /tmp/report.txt apk/APK-VERIFICATION.txt
+          # Gate only on what actually matters for installing and testing it.
+          grep -q 'libblender.so' /tmp/report.txt || { echo "::error title=APK::no libblender.so in the APK"; exit 1; }
+          grep -q 'nativeOnDrnasInput' /tmp/report.txt || { echo "::error title=APK::the input bridge is missing from libblender.so"; exit 1; }
+          grep -q 'DrnasGestureEngine' /tmp/report.txt || { echo "::error title=APK::the touch classes are missing from classes.dex"; exit 1; }
+          echo "APK verified"
 
       - name: Report on the pull request
         env:
