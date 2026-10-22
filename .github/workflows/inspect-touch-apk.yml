@@ -5,11 +5,14 @@ name: Inspect / publish a touch-test APK
 # JNI entrypoints, shipped classes) as a comment on the pull request - and optionally attaches the
 # APK to a prerelease so it can be installed directly.
 on:
+  push:
+    paths:
+      - '.github/workflows/inspect-touch-apk.yml'
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'Run id of a successful "DRNAS touch controls - ARM64 APK" build'
-        required: true
+        description: 'Run id of a successful "DRNAS touch controls - ARM64 APK" build (empty: newest)'
+        required: false
       publish:
         description: 'Attach the APK to the touch-test prerelease'
         type: boolean
@@ -29,14 +32,32 @@ jobs:
       - name: Check out the patches
         uses: actions/checkout@v4
 
+      - name: Resolve the APK run
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          run_id="${{ inputs.run_id }}"
+          if [ -z "$run_id" ]; then
+            # workflow_dispatch inputs are empty on a push trigger: use the newest successful build.
+            run_id=$(gh run list --workflow=native-apk-touch-test.yml --status success \
+              --limit 1 --json databaseId -q '.[0].databaseId')
+          fi
+          test -n "$run_id"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "using run $run_id"
+
       - name: Fetch the APK artifact
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -euxo pipefail
+          RUN_ID="${{ steps.pick.outputs.run_id }}"
           mkdir -p apk
-          gh run download "${{ inputs.run_id }}" -n "DRNAS-Touch-TEST-${{ inputs.run_id }}" -D apk
+          gh run download "$RUN_ID" -n "DRNAS-Touch-TEST-$RUN_ID" -D apk
           ls -l apk
           test -s apk/DRNAS-Native-Blender-Touch-TEST-arm64.apk
           (cd apk && sha256sum -c SHA256SUMS.txt)
@@ -76,18 +97,18 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "### Touch-test APK from run ${{ inputs.run_id }}"
+            echo "### Touch-test APK from run ${{ steps.pick.outputs.run_id }}"
             echo ""
             echo '```'
             cat /tmp/report.txt
             echo '```'
             echo ""
-            echo "Download: [run ${{ inputs.run_id }} artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ inputs.run_id }})"
+            echo "Download: [run ${{ steps.pick.outputs.run_id }} artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ steps.pick.outputs.run_id }})"
           } > /tmp/comment.md
           gh api "repos/${{ github.repository }}/issues/1/comments" -F body=@/tmp/comment.md >/dev/null
 
       - name: Attach to the touch-test prerelease
-        if: ${{ inputs.publish }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
