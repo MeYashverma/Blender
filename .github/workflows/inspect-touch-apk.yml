@@ -88,9 +88,9 @@ jobs:
               | awk '{print "  " $8}' | sort -u
             unzip -p "$APK" classes.dex > /tmp/classes.dex 2>/dev/null
             echo "input classes in dex:"
+            # DEX stores type descriptors, not bare names: Lorg/blender/blender/Drnas...;
             strings /tmp/classes.dex 2>/dev/null \
-              | grep -E '^(Drnas(PointerMap|GestureEngine|RelativePad|MouseState|ControlLayout|ShortcutStrip|InputHold|ZoomSpring))$' \
-              | sort -u | sed 's/^/  /'
+              | grep -oE 'Lorg/blender/blender/Drnas[A-Za-z]+;' | sort -u | sed 's/^/  /'
           } > /tmp/report.txt 2>&1
           cat /tmp/report.txt
           cp /tmp/report.txt apk/APK-VERIFICATION.txt
