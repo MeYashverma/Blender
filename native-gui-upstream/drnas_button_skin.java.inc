@@ -6,7 +6,7 @@
     return shape;
   }
   private void drnasStyleKey(TextView button, boolean mouse) {
-    android.widget.StateListAnimator stateAnimator = new android.widget.StateListAnimator();
+    android.animation.StateListAnimator stateAnimator = new android.animation.StateListAnimator();
     android.animation.ObjectAnimator pressedScaleX = android.animation.ObjectAnimator.ofFloat(button, View.SCALE_X, 1f, DrnasSkin.PRESS_SCALE);
     android.animation.ObjectAnimator pressedScaleY = android.animation.ObjectAnimator.ofFloat(button, View.SCALE_Y, 1f, DrnasSkin.PRESS_SCALE);
     pressedScaleX.setDuration(DrnasSkin.PRESS_MS); pressedScaleY.setDuration(DrnasSkin.PRESS_MS);
