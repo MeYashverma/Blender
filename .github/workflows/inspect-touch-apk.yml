@@ -146,9 +146,13 @@ jobs:
           button and wheel, relative touchpad mode, gesture orbit/pan/zoom, navigation widget,
           reorderable shortcut strip and the Android keyboard extras.
 
-          This is a TEST build from a pull request branch, not an official PreAlpha/Alpha release.
-          It is built from the pinned upstream commit with the deterministic patch chain, and it
-          has NOT been tested on a physical device. See TEST_REPORT.md in the repository.
+          Install notes: built from the pinned upstream commit with the deterministic patch chain.
+          It carries the same application id as Alpha 1.0, so if an Alpha 1.0 build with a different
+          signing key is already installed, uninstall it first (your projects in shared storage are
+          not affected).
+
+          This is a TEST build from a pull request branch, not an official PreAlpha/Alpha release,
+          and it has NOT been tested on a physical device. See TEST_REPORT.md in the repository.
           EOF
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${FILES[@]}" --clobber
@@ -157,4 +161,5 @@ jobs:
             gh release create "$TAG" "${FILES[@]}" --target "$GITHUB_SHA" \
               --title "DRNAS Touch TEST build" --prerelease --notes-file "$NOTES"
           fi
-          gh release view "$TAG" --json url,assets -q '.url, (.assets[]|.name+" "+.size|tostring)'
+          gh release view "$TAG" --json url,assets -q '.url'
+          gh release view "$TAG" --json assets -q '.assets[] | "\(.name) \(.size)"'
