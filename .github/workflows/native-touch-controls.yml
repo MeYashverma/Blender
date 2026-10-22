@@ -103,9 +103,30 @@ jobs:
           mkdir -p build/apk-classes
           find upstream/build_files/android/apk/app/src/main/java -name '*.java' > build/java-sources.txt
           wc -l build/java-sources.txt
-          javac -Xlint:deprecation -source 17 -target 17 -cp "$ANDROID_JAR" \
-            -d build/apk-classes @build/java-sources.txt 2>&1 | tee build/javac.log
-          test ${PIPESTATUS[0]} -eq 0
+          if javac -Xlint:deprecation -source 17 -target 17 -cp "$ANDROID_JAR" \
+              -d build/apk-classes @build/java-sources.txt > build/javac.log 2>&1; then
+            cat build/javac.log
+          else
+            cat build/javac.log
+            {
+              echo '### Android Java compile diagnostics'
+              echo '```text'
+              head -80 build/javac.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            while IFS= read -r line; do
+              printf '::error title=javac diagnostic::%s\n' "$line"
+            done < <(head -80 build/javac.log)
+            exit 1
+          fi
+
+      - name: Upload the Java diagnostics for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drnas-java-diagnostics
+          path: build/javac.log
+          if-no-files-found: ignore
 
       - name: Upload the compiled overlay for inspection
         uses: actions/upload-artifact@v4
