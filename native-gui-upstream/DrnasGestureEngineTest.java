@@ -275,9 +275,12 @@ public class DrnasGestureEngineTest {
         coords(180, 280), coords(100, 100), 0, 1060);
     engine.onTouch(DrnasGestureEngine.ACTION_POINTER_UP, ids(0, 1),
         coords(180, 280), coords(100, 100), 1, 1080);
-    check(rec.count("b1-") == 1, "drag ends with a single release");
-    engine.onTouch(DrnasGestureEngine.ACTION_UP, ids(0), coords(180), coords(100), 0, 1090);
-    check(rec.count("b1-") == 1 && rec.count("b3+") == 0, "no stuck button, no orbit");
+    check(rec.count("b1-") == 0 && engine.isLeftDown(),
+        "the drag finger still holds: a stray finger lifting must not abort the transform");
+    engine.onTouch(DrnasGestureEngine.ACTION_MOVE, ids(0), coords(200), coords(100), 0, 1085);
+    engine.onTouch(DrnasGestureEngine.ACTION_UP, ids(0), coords(200), coords(100), 0, 1090);
+    check(rec.count("b1-") == 1 && rec.count("b3+") == 0,
+        "the drag ends with exactly one release when its own finger lifts, and never orbits");
 
     // ---------------------------------------------------------------- configuration
     rec = new Recorder();

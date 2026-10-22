@@ -130,13 +130,18 @@ public class DrnasControlLayoutTest {
     safe.insetTop = 90;
     safe.insetBottom = 140;
     safe.insetRight = 60;
+    // The contract is "MIN_VISIBLE_DP stays reachable", measured against the *inset-adjusted*
+    // extent. The old code measured it against the full window, which let a restored panel park
+    // itself entirely under a system bar.
+    float visible = Math.min(Math.max(24f, 3f * DrnasControlLayout.MIN_VISIBLE_DP), 200f);
     float bottom = DrnasControlLayout.clampInBounds(100000f, 100f, 200f, safe, false);
-    check(bottom + 100f + 200f <= 2400f - 140f + 0.01f,
-        "a panel may not slide under the navigation bar");
+    check(bottom + 100f + visible <= 2400f - 140f + 0.01f,
+        "at least a thumb's worth of a panel stays clear of the navigation bar");
     float top = DrnasControlLayout.clampInBounds(-100000f, 400f, 200f, safe, false);
-    check(top + 400f >= 90f - 0.01f, "a panel may not slide under the status bar");
+    check(top + 400f + 200f >= 90f + visible - 0.01f,
+        "the panel cannot be dragged above the status bar");
     float right = DrnasControlLayout.clampInBounds(100000f, 100f, 200f, safe, true);
-    check(right + 100f + 200f <= 1080f - 60f + 0.01f, "the cutout inset is respected");
+    check(right + 100f + visible <= 1080f - 60f + 0.01f, "the cutout inset is respected");
     Bounds plain = new Bounds(1080, 2400, 3);
     near(DrnasControlLayout.clampInBounds(4000f, 100f, 200f, plain, false),
         DrnasControlLayout.clampOffset(4000f, 100f, 200f, 2400f, Math.min(56 * 3f, 200f)),
