@@ -3,7 +3,7 @@ package org.blender.blender;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Android-free state machine behind the integrated three-zone mouse dock. */
+/** Android-free button ownership and latch state behind the circular mouse ring. */
 public final class DrnasDockGesture {
   public interface Sink {
     void button(int bit, boolean down);

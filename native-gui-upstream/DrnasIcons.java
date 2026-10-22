@@ -148,6 +148,18 @@ public final class DrnasIcons {
     stroke("chevron_right", "M9.4 5.6 L15.8 12 L9.4 18.4");
     stroke("grip", "M8.6 7.5 L15.4 7.5 M8.6 12 L15.4 12 M8.6 16.5 L15.4 16.5");
 
+    stroke("select", "M5 3.5 L19 14.1 L12.7 14.3 L16.1 20.4 L13.4 21.8 L10 15.6 L5.8 20 Z");
+    stroke("extrude", "M5 8 L13 4 L20 8 L20 17 L12 21 L5 17 Z M5 8 L12 12 L20 8 M12 12 L12 21");
+    stroke("loop_cut", "M4.5 6.5 L19.5 6.5 M4.5 17.5 L19.5 17.5 M8 4.5 L8 19.5 M16 4.5 L16 19.5");
+    stroke("bevel", "M5 8 L8 5 L16 5 L19 8 L19 16 L16 19 L8 19 L5 16 Z M5 12 L19 12");
+    stroke("inset", "M4.5 4.5 L19.5 4.5 L19.5 19.5 L4.5 19.5 Z M8 8 L16 8 L16 16 L8 16 Z");
+    stroke("play", "M7 4.5 L19.5 12 L7 19.5 Z");
+    stroke("previous", "M6 5 L6 19 M18 5 L8 12 L18 19 Z");
+    stroke("next", "M18 5 L18 19 M6 5 L16 12 L6 19 Z");
+    stroke("keyframe", "M12 3.5 L19 10.5 L12 17.5 L5 10.5 Z M12 17.5 L12 21");
+    stroke("first_frame", "M6 5 L6 19 M18 6 L9 12 L18 18 Z");
+    stroke("last_frame", "M18 5 L18 19 M6 6 L15 12 L6 18 Z");
+    stroke("hide", "M3 12 C5.5 8 8.4 6 12 6 C15.6 6 18.5 8 21 12 M5 5 L19 19 M9.5 9.5 C8 12 10 14 12 14");
     stroke("frame",
         "M4.6 9 L4.6 4.6 L9 4.6 M15 4.6 L19.4 4.6 L19.4 9 "
             + "M19.4 15 L19.4 19.4 L15 19.4 M9 19.4 L4.6 19.4 L4.6 15 "

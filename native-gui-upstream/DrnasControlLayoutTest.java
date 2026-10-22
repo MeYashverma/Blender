@@ -97,21 +97,25 @@ public class DrnasControlLayoutTest {
     Group pMouse = new Group();
     Group pKeys = new Group();
     Group pNav = new Group();
-    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_ONE_HAND, pMouse, pKeys, pNav);
+    Group pTools = new Group();
+    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_ONE_HAND, pMouse, pKeys, pNav, pTools);
     check(pKeys.widthPercent == 70, "one-hand preset narrows the key strip");
-    check(pMouse.visible && pKeys.visible && pNav.visible, "one-hand keeps every group usable");
-    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_COMPACT, pMouse, pKeys, pNav);
+    check(pMouse.visible && pKeys.visible && pNav.visible && pTools.visible, "one-hand keeps every group usable");
+    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_COMPACT, pMouse, pKeys, pNav, pTools);
     check(pMouse.opacityPercent == 35 && !pKeys.expanded, "compact preset is translucent and folded");
-    check(pMouse.buttonPercent == 70, "compact preset shrinks the buttons");
-    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_LARGE_TARGETS, pMouse, pKeys, pNav);
-    check(pMouse.buttonPercent == 135 && pKeys.rows == 3, "large-target preset enlarges everything");
-    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_DESKTOP, pMouse, pKeys, pNav);
-    check(!pMouse.visible && !pKeys.visible && !pNav.visible,
+    check(pMouse.buttonPercent == 70 && pTools.buttonPercent == 80,
+        "compact preset shrinks mouse targets and the tool wheel");
+    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_LARGE_TARGETS, pMouse, pKeys, pNav, pTools);
+    check(pMouse.buttonPercent == 135 && pKeys.rows == 3 && pTools.buttonPercent == 135,
+        "large-target preset enlarges mouse, tools and keys");
+    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_DESKTOP, pMouse, pKeys, pNav, pTools);
+    check(!pMouse.visible && !pKeys.visible && !pNav.visible && !pTools.visible,
         "desktop preset hides the overlay without destroying its layout");
-    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_TWO_THUMB, pMouse, pKeys, pNav);
-    check(pMouse.visible && pKeys.visible, "switching back restores the overlay");
-    check(pMouse.buttonPercent == 100 && pKeys.rows == 2, "two-thumb preset restores defaults");
-    for (Group group : new Group[] {pMouse, pKeys, pNav}) {
+    DrnasControlLayout.applyPreset(DrnasControlLayout.PRESET_TWO_THUMB, pMouse, pKeys, pNav, pTools);
+    check(pMouse.visible && pKeys.visible && pTools.visible, "switching back restores the overlay");
+    check(pMouse.buttonPercent == 100 && pKeys.rows == 2 && pTools.buttonPercent == 100,
+        "two-thumb preset restores mouse, tool and keyboard defaults");
+    for (Group group : new Group[] {pMouse, pKeys, pNav, pTools}) {
       check(group.widthPercent >= 40 && group.widthPercent <= 160
           && group.heightPercent >= 60 && group.heightPercent <= 220
           && group.buttonPercent >= 60 && group.buttonPercent <= 150

@@ -1,6 +1,6 @@
 package org.blender.blender;
 
-/** Android-free touch state for the orientation puck's orbit and two-finger pan gestures. */
+/** Android-free orbit/pan state for the circular navigation dial. */
 public final class DrnasNavGesture {
   public interface Sink {
     void begin(boolean pan);
@@ -17,6 +17,7 @@ public final class DrnasNavGesture {
   private boolean moved;
   private boolean active;
   private boolean pan;
+  private boolean forcePan;
 
   public DrnasNavGesture(Sink sink, float touchSlop) {
     if (sink == null || touchSlop < 0f) throw new IllegalArgumentException();
@@ -25,11 +26,17 @@ public final class DrnasNavGesture {
   }
 
   public void down(float x, float y, int pointerCount) {
+    down(x, y, pointerCount, false);
+  }
+
+  /** @param forcePan true for the navigation dial's dedicated pan sector. */
+  public void down(float x, float y, int pointerCount, boolean forcePan) {
     downX = lastX = x;
     downY = lastY = y;
     moved = false;
     active = false;
     pan = false;
+    this.forcePan = forcePan;
     if (pointerCount > 1) {
       moved = true;
       start(true);
@@ -38,13 +45,13 @@ public final class DrnasNavGesture {
 
   public void pointerCountChanged(int pointerCount) {
     if (pointerCount > 1) moved = true;
-    if (moved && pointerCount > 0) transition(pointerCount > 1);
+    if (moved && pointerCount > 0) transition(forcePan || pointerCount > 1);
   }
 
   public void move(float x, float y, int pointerCount) {
     if (Math.abs(x - downX) > touchSlop || Math.abs(y - downY) > touchSlop) moved = true;
-    if (moved && pointerCount > 0 && !active) start(pointerCount > 1);
-    else if (moved && active && pointerCount > 0) transition(pointerCount > 1);
+    if (moved && pointerCount > 0 && !active) start(forcePan || pointerCount > 1);
+    else if (moved && active && pointerCount > 0) transition(forcePan || pointerCount > 1);
     if (active) sink.move(x - lastX, y - lastY, pan);
     lastX = x;
     lastY = y;
@@ -56,6 +63,7 @@ public final class DrnasNavGesture {
     final boolean tap = !moved;
     active = false;
     pan = false;
+    forcePan = false;
     return tap;
   }
 
@@ -64,6 +72,7 @@ public final class DrnasNavGesture {
     active = false;
     moved = true;
     pan = false;
+    forcePan = false;
   }
 
   private void start(boolean asPan) {

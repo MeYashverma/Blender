@@ -52,7 +52,7 @@ once('      button.setTextSize(10.5f * factor);', '      button.setTextSize(13f 
 # Shared DrnasSkin/DrnasChrome tokens replace the previous gradient and per-key background.
 once('    options.addView(drnasUiLabel("EDIT: pomakni panel prstom, DONE: spremi položaj"));',
      '    installDrnasMouseOptions(options);\n    options.addView(drnasUiLabel("EDIT: pomakni panel prstom, DONE: spremi položaj"));')
-# Replace the old card row with a movable grip and the unified three-zone scroll dock.
+# The circular control itself becomes the drag surface in EDIT mode; no permanent grip chip.
 once('    group.setOrientation(LinearLayout.VERTICAL);', '    group.setOrientation(LinearLayout.HORIZONTAL);')
 once('    heading.setText("ZOOM / MOVE");', '''    heading.setText("");
     if (heading instanceof DrnasIconTextView) {
@@ -61,7 +61,7 @@ once('    heading.setText("ZOOM / MOVE");', '''    heading.setText("");
 once('    group.setBackgroundColor(Color.argb(220, 22, 52, 73));',
      '    group.setBackgroundColor(Color.TRANSPARENT);')
 once('    group.addView(heading, new LinearLayout.LayoutParams(-1, dpDrnas(26)));',
-     '    group.addView(heading, new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(116)));\n    drnasDockMouseButtons(group);')
+     '    heading.setVisibility(View.GONE);\n    group.addView(heading, new LinearLayout.LayoutParams(0, 0));\n    drnasDockMouseButtons(group);')
 once('    drnasPosition(group, "zoom", true, 115, 96, 190, 80);', '''    drnasPosition(group, "zoom", true, 12, 18, 340, 80);
     drnasPanels.get(group).anchor.height = ViewGroup.LayoutParams.WRAP_CONTENT;
     drnasPanels.get(group).anchor.width = ViewGroup.LayoutParams.WRAP_CONTENT;

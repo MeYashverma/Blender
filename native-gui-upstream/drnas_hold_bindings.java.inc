@@ -124,15 +124,15 @@
   }
 
   private void drnasInstallMouseSizeOptions(LinearLayout options) {
-    options.addView(drnasUiLabel("VELIČINA MIŠA I SCROLL DOCKA"));
-    final TextView value = drnasUiLabel(drnasMouseButtonPercent + "% • LMB / MMB / RMB i scroll");
+    options.addView(drnasUiLabel("VELIČINA RADIALNOG MIŠA"));
+    final TextView value = drnasUiLabel(drnasMouseButtonPercent + "% • LMB / MMB / RMB · scroll");
     options.addView(value);
     SeekBar size = new SeekBar(this); drnasStyleSeekBar(size); size.setMax(60); size.setProgress(drnasMouseButtonPercent - 90);
     options.addView(size, new LinearLayout.LayoutParams(-1, dpDrnas(42)));
     size.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
       public void onProgressChanged(SeekBar b, int progress, boolean user) {
         drnasMouseButtonSizes(progress + 90, user);
-        value.setText(drnasMouseButtonPercent + "% • LMB / MMB / RMB i scroll");
+        value.setText(drnasMouseButtonPercent + "% • LMB / MMB / RMB · scroll");
       }
       public void onStartTrackingTouch(SeekBar b) {}
       public void onStopTrackingTouch(SeekBar b) {}

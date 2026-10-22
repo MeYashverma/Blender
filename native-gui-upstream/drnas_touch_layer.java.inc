@@ -250,6 +250,9 @@
   /** Releases every touch-driven button and modifier. Safe to call repeatedly. */
   private void drnasReleaseTouchInput(String reason) {
     if (drnasMouseDockView != null) drnasMouseDockView.releaseAll();
+    if (drnasNavBar instanceof DrnasNavigationPadView) {
+      ((DrnasNavigationPadView)drnasNavBar).releaseAll();
+    }
     if (drnasGestures != null) {
       drnasGestures.releaseAll(reason);
     }

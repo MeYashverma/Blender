@@ -114,6 +114,13 @@ cut(
     load("drnas_mouse_dock_method.java.inc"),
 )
 
+# Move the ring itself in EDIT mode; normal touches continue to reach its radial hit zones.
+once(
+    '    drnasEnableDrag(heading, group, "zoom");',
+    '    drnasEnableDrag(drnasMouseDockView, group, "zoom");',
+    "native mouse-ring repositioning",
+)
+
 # ------------------------------------------------------------------ 5. setup input without constructing three floating button cards
 once(
     """    drnasMouse(\"LMB\", 2, 3, true, \"lmb\");
@@ -227,7 +234,7 @@ once(
 once(
     "    installDrnasShortcutStrip();\n    installDrnasAndroidBack();",
     "    installDrnasShortcutStrip();\n    installDrnasNavWidget();\n"
-    "    installDrnasModeBadge();\n    installDrnasAndroidBack();",
+    "    installDrnasToolPalette();\n    installDrnasModeBadge();\n    installDrnasAndroidBack();",
     "navigation widget install",
 )
 
@@ -328,15 +335,17 @@ required = [
     ("DrnasControlLayout", "layout model"),
     ("DrnasSkin", "shared visual tokens"),
     ("DrnasIconTextView", "vector mouse controls"),
-    ("DrnasOrientationGizmo", "orientation puck"),
-    ("setOnOrbitListener", "native orbit/pan interaction"),
+    ("DrnasNavigationPadView", "circular navigation dial"),
+    ("DrnasRadialPaletteView", "contextual tool palette"),
+    ("DrnasRadialPaletteModel", "purpose-specific radial actions"),
+    ("installDrnasToolPalette(", "movable tool palette installation"),
     ("drnasRegisterSkinGroup", "idle opacity state"),
     ("private native int nativeDrnasCapabilities();", "capability declaration"),
     ("drnasSetInputMode(", "mode switching"),
     ("installDrnasNavWidget(", "navigation widget"),
     ("installDrnasLayoutOptions(", "layout presets"),
     ("drnasReleaseTouchInput(", "input release"),
-    ("DrnasMouseDockView", "integrated mouse and scroll dock"),
+    ("DrnasMouseRingView", "circular movable mouse controller"),
     ("drnasMouseDockView.setMiddleAvailable", "middle button capability gate"),
 ]
 for needle, what in required:
@@ -377,8 +386,10 @@ shipped = [
     "DrnasChrome.java",
     "DrnasIconTextView.java",
     "DrnasIconButton.java",
-    "DrnasOrientationGizmo.java",
-    "DrnasMouseDockView.java",
+    "DrnasMouseRingView.java",
+    "DrnasNavigationPadView.java",
+    "DrnasRadialPaletteView.java",
+    "DrnasRadialPaletteModel.java",
     "DrnasDockGesture.java",
     "DrnasNavGesture.java",
 ]
@@ -391,5 +402,5 @@ for name in shipped:
     if not installed.is_file() or "package org.blender.blender;" not in installed.read_text():
         raise SystemExit(f"{name} was not installed into the APK source tree")
 
-print("PASS: touch layer, dock MMB/wheel, navigation widget, presets, lifecycle release "
+print("PASS: touch layer, radial mouse ring, navigation dial, tool palette, presets, lifecycle release "
       f"({len(shipped)} logic classes installed)")

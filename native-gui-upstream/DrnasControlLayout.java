@@ -21,6 +21,7 @@ public final class DrnasControlLayout {
   public static final int GROUP_MOUSE = 0;
   public static final int GROUP_KEYS = 1;
   public static final int GROUP_NAV = 2;
+  public static final int GROUP_TOOLS = 3;
 
   public static final int PRESET_TWO_THUMB = 0;
   public static final int PRESET_ONE_HAND = 1;
@@ -216,15 +217,22 @@ public final class DrnasControlLayout {
    * mirror controls by hand; hand-made changes after a preset simply become the new state.
    */
   public static void applyPreset(int preset, Group mouse, Group keys, Group nav) {
-    if (mouse == null || keys == null || nav == null) {
+    applyPreset(preset, mouse, keys, nav, new Group());
+  }
+
+  /** Applies the same device layout to the movable radial tool palette as the other controls. */
+  public static void applyPreset(int preset, Group mouse, Group keys, Group nav, Group tools) {
+    if (mouse == null || keys == null || nav == null || tools == null) {
       return;
     }
     mouse.visible = true;
     keys.visible = true;
     nav.visible = true;
+    tools.visible = true;
     mouse.expanded = true;
     keys.expanded = true;
     nav.expanded = false;
+    tools.expanded = true;
 
     switch (preset) {
       case PRESET_ONE_HAND:
@@ -237,7 +245,12 @@ public final class DrnasControlLayout {
         nav.offsetY = 0f;
         mouse.widthPercent = 100;
         keys.widthPercent = 70;
+        tools.widthPercent = 85;
+        tools.buttonPercent = 100;
+        tools.offsetX = 0f;
+        tools.offsetY = 0f;
         mouse.opacityPercent = 10;
+        tools.opacityPercent = 10;
         break;
       case PRESET_COMPACT:
         mouse.buttonPercent = 70;
@@ -245,7 +258,10 @@ public final class DrnasControlLayout {
         mouse.widthPercent = 80;
         keys.widthPercent = 60;
         keys.heightPercent = 80;
+        tools.buttonPercent = 80;
+        tools.widthPercent = 80;
         mouse.opacityPercent = 35;
+        tools.opacityPercent = 35;
         keys.opacityPercent = 35;
         keys.expanded = false;
         break;
@@ -255,7 +271,10 @@ public final class DrnasControlLayout {
         mouse.widthPercent = 120;
         keys.widthPercent = 100;
         keys.rows = 3;
+        tools.buttonPercent = 135;
+        tools.widthPercent = 120;
         mouse.opacityPercent = 0;
+        tools.opacityPercent = 0;
         keys.opacityPercent = 0;
         break;
       case PRESET_TABLET:
@@ -266,7 +285,10 @@ public final class DrnasControlLayout {
         mouse.widthPercent = 110;
         keys.widthPercent = 100;
         keys.rows = 2;
+        tools.buttonPercent = 110;
+        tools.widthPercent = 110;
         mouse.opacityPercent = 20;
+        tools.opacityPercent = 20;
         keys.opacityPercent = 20;
         nav.visible = true;
         nav.expanded = true;
@@ -276,6 +298,7 @@ public final class DrnasControlLayout {
         mouse.visible = false;
         keys.visible = false;
         nav.visible = false;
+        tools.visible = false;
         break;
       case PRESET_TWO_THUMB:
       default:
@@ -287,14 +310,18 @@ public final class DrnasControlLayout {
         nav.offsetY = 0f;
         mouse.buttonPercent = 100;
         keys.buttonPercent = 100;
+        tools.buttonPercent = 100;
+        tools.widthPercent = 100;
         keys.rows = 2;
         mouse.opacityPercent = 0;
         keys.opacityPercent = 0;
+        tools.opacityPercent = 0;
         break;
     }
     mouse.normalise();
     keys.normalise();
     nav.normalise();
+    tools.normalise();
   }
 
   public static String presetName(int preset) {

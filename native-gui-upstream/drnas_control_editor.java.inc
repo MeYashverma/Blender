@@ -16,6 +16,9 @@
   private void drnasApplyOpacity() {
     if (drnasMouseDock != null) drnasMouseDock.setAlpha(1f - drnasPrefs.getInt("mouse_transparency", 0) / 100f);
     if (drnasKeyStrip != null) drnasKeyStrip.setAlpha(1f - drnasPrefs.getInt("keyboard_transparency", 0) / 100f);
+    if (drnasToolPaletteView != null) {
+      drnasToolPaletteView.setAlpha(1f - drnasPrefs.getInt("tools_transparency", 0) / 100f);
+    }
   }
   private void drnasEditorSlider(LinearLayout rows, String title, int min, int max,
       int value, String suffix, java.util.function.IntConsumer changed) {

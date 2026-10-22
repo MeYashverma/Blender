@@ -107,8 +107,8 @@ labels = {
     "Zatvori postavke i vrati se Blenderu": "Close settings and return to Blender",
     "Ručkicom ⠿ pomakni kontrole; položaj se sprema automatski":
         "Drag controls using ⠿; position saves automatically",
-    "VELIČINA MIŠA I SCROLL DOCKA": "MOUSE AND SCROLL DOCK SIZE",
-    "% • LMB / MMB / RMB i scroll": "% • LMB / MMB / RMB and scroll",
+    "VELIČINA RADIALNOG MIŠA": "RADIAL MOUSE SIZE",
+    "% • LMB / MMB / RMB · scroll": "% • LMB / MMB / RMB · scroll",
     "Dvostruki dodir: zaključaj tipku • jedan dodir: otključaj":
         "Double-tap to lock; tap once to unlock",
     " — zaključano; dodirni za otključavanje": " — locked; tap to unlock",

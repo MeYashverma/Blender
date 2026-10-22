@@ -35,6 +35,11 @@ public final class DrnasNavGestureTest {
         "one-finger orbit and two-finger pan transitions release each native gesture cleanly: " + events);
 
     events.clear();
+    nav.down(0f, 0f, 1, true);
+    nav.move(10f, 0f, 1);
+    nav.cancel();
+    check(events.get(0).equals("pan+"), "the dedicated navigation sector forces pan");
+    events.clear();
     nav.down(0f, 0f, 1);
     nav.move(10f, 0f, 1);
     nav.cancel();

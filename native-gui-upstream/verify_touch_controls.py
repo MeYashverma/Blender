@@ -94,32 +94,33 @@ for signature in [
     check(count == 1, f"{signature!r} must be declared exactly once, found {count}")
 
 # ---------------------------------------------------------------- 3. integrated mouse dock completeness
-check("DrnasMouseDockView drnasMouseDockView" in activity,
-      "one coherent mouse-and-scroll touch surface must be installed")
-check("new DrnasMouseDockView(this)" in activity,
-      "the dock must be a single shared component, not detached button cards")
-check("drnasMouseDockView.setMiddleAvailable(drnasHasCapability(DRNAS_CAP_MIDDLE))" in activity,
-      "middle input must be capability-gated")
-check("drnasMouseDockView.setHorizontalAvailable(drnasHasCapability(DRNAS_CAP_HSCROLL))" in activity,
-      "horizontal scroll must be capability-gated")
+check("DrnasMouseRingView drnasMouseDockView" in activity
+      and "new DrnasMouseRingView(this)" in activity,
+      "the mouse controls must be installed as one circular, movable mouse surface")
+check("drnasMouseDockView.setMiddleAvailable(drnasHasCapability(DRNAS_CAP_MIDDLE))" in activity
+      and "drnasMouseDockView.setHorizontalAvailable(drnasHasCapability(DRNAS_CAP_HSCROLL))" in activity,
+      "middle and horizontal wheel input must be capability-gated")
 check("drnasMouseButtons.press(bit)" in activity and "drnasMouseButtons.release(bit)" in activity,
-      "the dock must emit real independent button press/release events")
+      "the ring must emit independent LMB/MMB/RMB press and release events")
 check("drnasSendInput(6, 0f, 0f, vertical)" in activity
       and "drnasSendInput(12, 0f, 0f, horizontal)" in activity,
-      "the dock scroll lane must emit vertical and horizontal wheel events")
-mouse_dock_source = read(patch_dir / "DrnasMouseDockView.java")
-check("DrnasDockGesture" in mouse_dock_source and "Double tap to latch" in mouse_dock_source,
-      "the dock must expose tested double-tap latch/unlock semantics")
+      "the scroll sector must send vertical and horizontal wheel events")
+mouse_ring_source = read(patch_dir / "DrnasMouseRingView.java")
+check("DrnasDockGesture" in mouse_ring_source and "double-tap" in mouse_ring_source.lower(),
+      "the mouse ring must expose tested click/latch/unlock semantics")
 nav_gesture_source = read(patch_dir / "DrnasNavGesture.java")
-orientation_source = read(patch_dir / "DrnasOrientationGizmo.java")
-check("setOnOrbitListener" in activity and "DrnasNavGesture" in orientation_source
-      and "pointerCountChanged" in nav_gesture_source,
-      "the orientation puck must provide tested orbit and two-finger pan gestures")
-check('drnasNavButton(navRow, "ORBIT"' not in activity
-      and 'drnasNavButton(navRow, "PAN"' not in activity,
-      "the old ORBIT/PAN text-button row must be removed")
-check("drnasCompactNavAction" in activity and "nav_views_visible" in activity,
-      "compact zoom/frame actions and collapsible contextual view shortcuts must remain")
+nav_source = read(patch_dir / "DrnasNavigationPadView.java")
+palette_source = read(patch_dir / "DrnasRadialPaletteView.java")
+palette_model = read(patch_dir / "DrnasRadialPaletteModel.java")
+check("DrnasNavigationPadView" in activity and "DrnasRadialPaletteView" in activity,
+      "the circular navigation and purpose-specific tool palettes must be installed")
+check("PAGE_OBJECT" in palette_model and "PAGE_EDIT" in palette_model
+      and "PAGE_TIMELINE" in palette_model and "PAGE_VIEW" in palette_model,
+      "the radial palette must provide object/edit/timeline/view pages")
+check("drnasToolPaletteView" in activity and "tools_x" in activity,
+      "the tool palette must have an independently movable saved position")
+check("DrnasNavGesture" in nav_source and "forcePan" in nav_gesture_source,
+      "the nav dial must support orbit and the dedicated pan sector")
 
 # ---------------------------------------------------------------- 4. Java <-> native contract
 java_actions = set()
@@ -227,12 +228,14 @@ logic_classes = sorted(p.name for p in patch_dir.glob("Drnas*.java")
                                           "DrnasInitLog.java", "DrnasLanguage.java",
                                           "DrnasGpuPolicy.java", "DrnasChrome.java", "DrnasSkin.java", "DrnasIcons.java",
                                           "DrnasIconButton.java", "DrnasIconTextView.java",
-                                          "DrnasOrientationGizmo.java", "DrnasMouseDockView.java"})
+                                          "DrnasOrientationGizmo.java", "DrnasMouseDockView.java", "DrnasMouseRingView.java",
+                                          "DrnasNavigationPadView.java", "DrnasRadialPaletteView.java"})
 test_names = {p.name for p in patch_dir.glob("*Test.java")}
 runner = read(patch_dir / "run_input_tests.sh")
 check("DrnasDockGesture" in runner and "DrnasDockGestureTest" in runner
-      and "DrnasNavGesture" in runner and "DrnasNavGestureTest" in runner,
-      "the new mouse-dock and navigation state tests must run in the JVM suite")
+      and "DrnasNavGesture" in runner and "DrnasNavGestureTest" in runner
+      and "DrnasRadialPaletteModelTest" in runner,
+      "the mouse, navigation and radial-palette tests must run in the JVM suite")
 check("DrnasVisualDesignTest.java" in test_names,
       "the shared Blender-dark palette and icon contract need a design-system test")
 for source in logic_classes:

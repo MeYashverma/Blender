@@ -3,7 +3,7 @@ package org.blender.blender;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Regression tests for the integrated mouse dock's momentary, latched and simultaneous buttons. */
+/** Regression tests for the circular mouse ring's momentary, latched and simultaneous buttons. */
 public final class DrnasDockGestureTest {
   private DrnasDockGestureTest() {}
 
@@ -57,7 +57,7 @@ public final class DrnasDockGestureTest {
     dock.releaseAll();
     check(dock.heldMask() == 0 && dock.latchedMask() == 0, "lifecycle release clears all state");
 
-    System.out.println("PASS: integrated dock click/latch/unlock, simultaneous zones, cancel and lifecycle release");
+    System.out.println("PASS: mouse-ring click/latch/unlock, simultaneous zones, cancel and lifecycle release");
   }
 
   private static void check(boolean ok, String message) {
