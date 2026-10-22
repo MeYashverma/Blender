@@ -7,11 +7,9 @@ on:
   push:
     branches: [arena/e8ebe2c9-blender]
     paths:
+      # Anything that can end up in the APK has to rebuild it.
       - '.github/workflows/native-apk-touch-test.yml'
-      - 'native-gui-upstream/patch_native_touch_extra.py'
-      - 'native-gui-upstream/patch_drnas_touch_layer.py'
-      - 'native-gui-upstream/drnas_touch_layer.java.inc'
-      - 'native-gui-upstream/drnas_dock_nav.java.inc'
+      - 'native-gui-upstream/**'
   workflow_dispatch:
 
 permissions:
