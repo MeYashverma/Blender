@@ -2,6 +2,64 @@
    * DRNAS dock, navigation widget, keyboard extras and layout presets.
    * ================================================================== */
 
+  private final android.os.Handler drnasVisualHandler =
+      new android.os.Handler(android.os.Looper.getMainLooper());
+  private final java.util.ArrayList<View> drnasSkinGroups = new java.util.ArrayList<>();
+  private final java.util.HashSet<View> drnasMinimizedGroups = new java.util.HashSet<>();
+  private final Runnable drnasIdleFade = () -> {
+    for (View group : drnasSkinGroups) {
+      if (group != null && group.getVisibility() == View.VISIBLE) {
+        final float alpha = drnasMinimizedGroups.contains(group)
+            ? DrnasSkin.ALPHA_MINIMIZED : DrnasSkin.ALPHA_IDLE;
+        group.animate().alpha(alpha).setDuration(DrnasSkin.FADE_MS).start();
+      }
+    }
+  };
+
+  private void drnasStyleSeekBar(SeekBar seek) {
+    seek.setProgressTintList(android.content.res.ColorStateList.valueOf(DrnasSkin.ACCENT));
+    seek.setThumbTintList(android.content.res.ColorStateList.valueOf(DrnasSkin.ACCENT_BRIGHT));
+    seek.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(DrnasSkin.HAIRLINE_STRONG));
+  }
+
+  private void drnasStyleSwitch(android.widget.Switch toggle) {
+    toggle.setTextColor(DrnasSkin.TEXT);
+    toggle.setTextSize(12f);
+    toggle.setPadding(dpDrnas(DrnasSkin.SPACE_S), dpDrnas(3), dpDrnas(DrnasSkin.SPACE_M), dpDrnas(3));
+    final int[][] states = new int[][] {
+        new int[] {android.R.attr.state_checked}, new int[] {}
+    };
+    toggle.setThumbTintList(new android.content.res.ColorStateList(states,
+        new int[] {DrnasSkin.ACCENT_BRIGHT, DrnasSkin.ICON_SECONDARY}));
+    toggle.setTrackTintList(new android.content.res.ColorStateList(states,
+        new int[] {DrnasSkin.ACCENT_WASH, DrnasSkin.HAIRLINE_STRONG}));
+  }
+
+  private void drnasRegisterSkinGroup(View view) {
+    if (view == null || drnasSkinGroups.contains(view)) return;
+    drnasSkinGroups.add(view);
+    view.setAlpha(DrnasSkin.ALPHA_IDLE);
+  }
+
+  private void drnasSetMinimized(View view, boolean minimized) {
+    if (view == null) return;
+    if (minimized) drnasMinimizedGroups.add(view);
+    else drnasMinimizedGroups.remove(view);
+    view.animate().alpha(minimized ? DrnasSkin.ALPHA_MINIMIZED : DrnasSkin.ALPHA_ACTIVE)
+        .setDuration(DrnasSkin.PANEL_MS).start();
+  }
+
+  /** Fades back to readable-but-quiet after rest; never hides controls or delays input. */
+  private void drnasWakeSkin() {
+    drnasVisualHandler.removeCallbacks(drnasIdleFade);
+    for (View group : drnasSkinGroups) {
+      if (group != null && group.getVisibility() == View.VISIBLE) {
+        group.animate().alpha(DrnasSkin.ALPHA_ACTIVE).setDuration(DrnasSkin.FADE_MS).start();
+      }
+    }
+    drnasVisualHandler.postDelayed(drnasIdleFade, DrnasSkin.IDLE_AFTER_MS);
+  }
+
   private final android.os.Handler drnasRepeatHandler =
       new android.os.Handler(android.os.Looper.getMainLooper());
   private Runnable drnasRepeatAction;
@@ -32,17 +90,17 @@
   /** Wheel up/down (and horizontal) buttons: real wheel events, repeat while held. */
   private void drnasDockWheelButton(LinearLayout dock, String label, final int action,
                                     final float amount, final String key) {
-    final TextView button = new TextView(this);
-    button.setText(label);
-    button.setTextSize(17f);
-    button.setTextColor(Color.WHITE);
-    button.setGravity(Gravity.CENTER);
-    button.setSingleLine(true);
-    button.setBackground(drnasPill(Color.argb(215, 24, 58, 86)));
+    final DrnasIconTextView button = new DrnasIconTextView(this);
+    button.setText("");
     button.setContentDescription(label);
+    final String icon = key.equals("wheelup") ? "wheel_up"
+        : key.equals("wheeldown") ? "wheel_down"
+        : key.equals("hleft") ? "wheel_left" : "wheel_right";
+    button.setDrnasIcon(icon, DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
+    drnasStyleKey(button, false);
     final LinearLayout.LayoutParams size =
-        new LinearLayout.LayoutParams(dpDrnas(54), dpDrnas(54));
-    size.setMargins(dpDrnas(4), dpDrnas(4), dpDrnas(4), dpDrnas(4));
+        new LinearLayout.LayoutParams(dpDrnas(DrnasSkin.TOUCH_MIN), dpDrnas(DrnasSkin.TOUCH_MIN));
+    size.setMargins(dpDrnas(0), dpDrnas(2), dpDrnas(0), dpDrnas(2));
     dock.addView(button, size);
     drnasResizeTargets.put(key, button);
     button.setOnTouchListener((v, event) -> {
@@ -51,6 +109,7 @@
       }
       switch (event.getActionMasked()) {
         case MotionEvent.ACTION_DOWN:
+          drnasWakeSkin();
           v.setActivated(true);
           drnasHaptic(v);
           drnasSendInput(action, 0f, 0f, amount);
@@ -69,12 +128,8 @@
 
   /** Called from drnasDockMouseButtons once the LMB/RMB/MMB widgets are in place. */
   private void drnasDockExtraButtons(LinearLayout dock) {
-    drnasDockWheelButton(dock, "W\u25B2", 6, 1f, "wheelup");
-    drnasDockWheelButton(dock, "W\u25BC", 6, -1f, "wheeldown");
-    if (drnasHasCapability(DRNAS_CAP_HSCROLL)) {
-      drnasDockWheelButton(dock, "H\u25C0", 12, -1f, "hleft");
-      drnasDockWheelButton(dock, "H\u25B6", 12, 1f, "hright");
-    }
+    drnasDockWheelButton(dock, "Scroll up", 6, 1f, "wheelup");
+    drnasDockWheelButton(dock, "Scroll down", 6, -1f, "wheeldown");
   }
 
   /* ------------------------------------------------------------------ navigation widget */
@@ -83,6 +138,7 @@
     view.setOnTouchListener((v, event) -> {
       switch (event.getActionMasked()) {
         case MotionEvent.ACTION_DOWN:
+          drnasWakeSkin();
           if (drnasMouseButtons == null) {
             return true;
           }
@@ -127,17 +183,24 @@
   }
 
   private TextView drnasNavButton(LinearLayout row, String label, int widthDp) {
-    final TextView button = new TextView(this);
+    final DrnasIconTextView button = new DrnasIconTextView(this);
     button.setText(label);
-    button.setTextSize(11f);
-    button.setTextColor(drnasTextWhite);
-    button.setGravity(Gravity.CENTER);
-    button.setSingleLine(true);
-    button.setBackground(drnasPill(Color.argb(215, 22, 50, 72)));
+    button.setTextSize(10f);
+    button.setTextColor(DrnasSkin.TEXT_SECONDARY);
+    drnasStyleKey(button, false);
+    final String icon = label.equals("ORBIT") ? "orbit"
+        : label.equals("PAN") ? "pan" : label.equals("Frame") ? "frame"
+        : label.equals("All") ? "frame_all" : label.equals("Front") ? "view_front"
+        : label.equals("Back") ? "view_back" : label.equals("Left") ? "view_left"
+        : label.equals("Right") ? "view_right" : label.equals("Top") ? "view_top"
+        : label.equals("Bottom") ? "view_bottom" : label.equals("Persp/Ortho") ? "ortho"
+        : label.equals("User") ? "view_eye" : label.equals("+") ? "zoom_in"
+        : label.equals("−") ? "zoom_out" : null;
+    if (icon != null) button.setDrnasIcon(icon, DrnasSkin.ICON_SM, DrnasSkin.ICON, true);
     button.setContentDescription(label);
-    final LinearLayout.LayoutParams size =
-        new LinearLayout.LayoutParams(dpDrnas(widthDp), dpDrnas(42));
-    size.setMargins(dpDrnas(2), dpDrnas(2), dpDrnas(2), dpDrnas(2));
+    final LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(
+        dpDrnas(Math.max(widthDp, (int)DrnasSkin.TOUCH_MIN)), dpDrnas(DrnasSkin.TOUCH_MIN));
+    size.setMargins(dpDrnas(1), dpDrnas(1), dpDrnas(1), dpDrnas(1));
     row.addView(button, size);
     return button;
   }
@@ -221,16 +284,22 @@
 
     final LinearLayout header = new LinearLayout(this);
     header.setGravity(Gravity.CENTER_VERTICAL);
-    final TextView grip = drnasUiLabel("NAV");
-    grip.setTextSize(11f);
+    final DrnasIconTextView grip = new DrnasIconTextView(this);
+    grip.setText("NAV"); grip.setTextSize(9f); grip.setTextColor(DrnasSkin.TEXT_SECONDARY);
+    grip.setDrnasIcon("nav", DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, true);
     grip.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
         "Drag to move the navigation widget", "Povuci za premjestanje navigacije"));
-    header.addView(grip, new LinearLayout.LayoutParams(dpDrnas(56), dpDrnas(30)));
-    final TextView fold = drnasUiLabel("\u25BE");
-    fold.setTextSize(14f);
-    header.addView(fold, new LinearLayout.LayoutParams(dpDrnas(38), dpDrnas(30)));
+    header.addView(grip, new LinearLayout.LayoutParams(dpDrnas(58), dpDrnas(38)));
+    final DrnasIconTextView fold = new DrnasIconTextView(this);
+    fold.setDrnasIcon("chevron_down", DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
+    fold.setContentDescription("Expand or minimize navigation");
+    header.addView(fold, new LinearLayout.LayoutParams(dpDrnas(44), dpDrnas(44)));
+    final DrnasIconTextView viewsToggle = new DrnasIconTextView(this);
+    viewsToggle.setDrnasIcon("view_eye", DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
+    viewsToggle.setContentDescription("Show view directions");
+    header.addView(viewsToggle, new LinearLayout.LayoutParams(dpDrnas(44), dpDrnas(44)));
     root.addView(header, new LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.WRAP_CONTENT, dpDrnas(30)));
+        ViewGroup.LayoutParams.WRAP_CONTENT, dpDrnas(44)));
 
     final LinearLayout body = new LinearLayout(this);
     body.setOrientation(LinearLayout.VERTICAL);
@@ -240,7 +309,20 @@
     drnasBindNavDrag(orbit, false);
     final TextView pan = drnasNavButton(navRow, "PAN", 56);
     drnasBindNavDrag(pan, true);
-    final TextView zoomOut = drnasNavButton(navRow, "\u2212", 44);
+    final DrnasOrientationGizmo orientation = new DrnasOrientationGizmo(this);
+    orientation.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
+        "View orientation. Touch a coloured axis to choose a view.",
+        "Smjer pogleda. Dodirni obojenu os za odabir pogleda."));
+    orientation.setOnDirectionListener((key, meta) -> {
+      if (drnasTyping()) {
+        drnasFlashDisabled(orientation, DrnasLanguage.text(BlenderActivity.this,
+            "blocked while typing", "blokirano tijekom tipkanja"));
+      } else {
+        drnasTap(key, meta);
+      }
+    });
+    navRow.addView(orientation, new LinearLayout.LayoutParams(dpDrnas(68), dpDrnas(68)));
+    final TextView zoomOut = drnasNavButton(navRow, "−", 44);
     zoomOut.setOnClickListener(v -> drnasSendInput(6, 0f, 0f, -2f));
     final TextView zoomIn = drnasNavButton(navRow, "+", 44);
     zoomIn.setOnClickListener(v -> drnasSendInput(6, 0f, 0f, 2f));
@@ -270,6 +352,16 @@
         Math.max(dpDrnas(200), Math.min(dpDrnas(430),
             getResources().getDisplayMetrics().widthPixels - dpDrnas(40))),
         ViewGroup.LayoutParams.WRAP_CONTENT));
+    final boolean directionsVisible = drnasPrefs.getBoolean("nav_views_visible", false);
+    scroller.setVisibility(directionsVisible ? View.VISIBLE : View.GONE);
+    viewsToggle.setActivated(directionsVisible);
+    viewsToggle.setOnClickListener(v -> {
+      final boolean show = scroller.getVisibility() != View.VISIBLE;
+      scroller.setVisibility(show ? View.VISIBLE : View.GONE);
+      viewsToggle.setActivated(show);
+      drnasPrefs.edit().putBoolean("nav_views_visible", show).apply();
+      drnasRefreshPanels();
+    });
 
     if (!drnasHasCapability(DRNAS_CAP_KEYS)) {
       final TextView note = drnasUiLabel(DrnasLanguage.text(BlenderActivity.this,
@@ -282,16 +374,21 @@
 
     final boolean expanded = drnasPrefs.getBoolean("nav_expanded", true);
     body.setVisibility(expanded ? View.VISIBLE : View.GONE);
-    fold.setText(expanded ? "\u25BE" : "\u25B8");
+    fold.setDrnasIcon(expanded ? "chevron_down" : "chevron_right",
+        DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
     fold.setOnClickListener(v -> {
       final boolean show = body.getVisibility() != View.VISIBLE;
       body.setVisibility(show ? View.VISIBLE : View.GONE);
-      fold.setText(show ? "\u25BE" : "\u25B8");
+      drnasSetMinimized(root, !show);
+      fold.setDrnasIcon(show ? "chevron_down" : "chevron_right",
+          DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
       drnasPrefs.edit().putBoolean("nav_expanded", show).apply();
       drnasRefreshPanels();
     });
 
     drnasNavBar = root;
+    drnasRegisterSkinGroup(root);
+    drnasSetMinimized(root, !expanded);
     final FrameLayout.LayoutParams location = new FrameLayout.LayoutParams(
         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
         Gravity.TOP | Gravity.RIGHT);
@@ -695,6 +792,7 @@
       toggle.setText(names[i]);
       toggle.setTextColor(drnasTextWhite);
       toggle.setTextSize(12f);
+      drnasStyleSwitch(toggle);
       toggle.setChecked(drnasPrefs.getBoolean(key, true));
       toggle.setOnCheckedChangeListener((v, enabled) -> {
         drnasPrefs.edit().putBoolean(key, enabled).apply();
@@ -707,6 +805,7 @@
         + drnasPrefs.getInt("gesture_sensitivity", 100) + "%");
     options.addView(sensitivityLabel);
     final SeekBar sensitivity = new SeekBar(this);
+    drnasStyleSeekBar(sensitivity);
     sensitivity.setMax(150);
     sensitivity.setProgress(Math.max(0, Math.min(150, drnasPrefs.getInt("gesture_sensitivity", 100) - 50)));
     sensitivity.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
@@ -732,6 +831,7 @@
         + drnasPrefs.getInt("pointer_acceleration", 35) + "%");
     options.addView(accelerationLabel);
     final SeekBar acceleration = new SeekBar(this);
+    drnasStyleSeekBar(acceleration);
     acceleration.setMax(150);
     acceleration.setProgress(Math.max(0, Math.min(150,
         drnasPrefs.getInt("pointer_acceleration", 35))));
@@ -825,6 +925,7 @@
         + drnasPrefs.getInt("pointer_acceleration", 35) + "%");
     options.addView(acceleration);
     final SeekBar accelerationBar = new SeekBar(this);
+    drnasStyleSeekBar(accelerationBar);
     accelerationBar.setMax(100);
     accelerationBar.setProgress(drnasPrefs.getInt("pointer_acceleration", 35));
     options.addView(accelerationBar, new LinearLayout.LayoutParams(-1, dpDrnas(38)));
@@ -845,6 +946,7 @@
         "Navigation pad speed: ", "Brzina navigacije: ") + Math.round(drnasNavSpeed * 100) + "%");
     options.addView(navSpeedLabel);
     final SeekBar navSpeedBar = new SeekBar(this);
+    drnasStyleSeekBar(navSpeedBar);
     navSpeedBar.setMax(360);
     navSpeedBar.setProgress(Math.max(40, Math.min(400, (int) Math.round(drnasNavSpeed * 100))));
     options.addView(navSpeedBar, new LinearLayout.LayoutParams(-1, dpDrnas(38)));
@@ -869,6 +971,7 @@
         "Haptic feedback", "Vibracija"));
     haptics.setTextColor(drnasTextWhite);
     haptics.setTextSize(12f);
+    drnasStyleSwitch(haptics);
     haptics.setChecked(drnasPrefs.getBoolean("haptics", true));
     haptics.setOnCheckedChangeListener((v, enabled) -> {
       drnasPrefs.edit().putBoolean("haptics", enabled).apply();

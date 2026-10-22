@@ -378,6 +378,7 @@
       return true;
     });
     drnasModeBadge = badge;
+    drnasRegisterSkinGroup(badge);
     drnasModeChrome = badge;
     final FrameLayout.LayoutParams location = new FrameLayout.LayoutParams(
         dpDrnas(76), dpDrnas(34), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
@@ -452,6 +453,7 @@
       if (drnasGestures == null) {
         return true;
       }
+      if (event.getActionMasked() == MotionEvent.ACTION_DOWN) drnasWakeSkin();
       final int action = drnasGestureAction(event.getActionMasked());
       if (action < 0) {
         return true;

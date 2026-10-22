@@ -18,6 +18,7 @@ once('    drnasMouseSpeed = drnasPrefs.getInt("mouse_speed", 100) / 100f;', ''' 
 once('    options.addView(drnasUiLabel("Miš: tap = lijevi klik • 2 prsta = zoom / desni tap"));', '''    final TextView cursorSizeLabel = drnasUiLabel("Veličina kursora: " + drnasCursorPercent + "%");
     options.addView(cursorSizeLabel);
     SeekBar cursorSize = new SeekBar(this);
+    drnasStyleSeekBar(cursorSize);
     cursorSize.setContentDescription("Veličina kursora od 40 do 150 posto");
     cursorSize.setMax(110); cursorSize.setProgress(drnasCursorPercent - 40);
     options.addView(cursorSize, new LinearLayout.LayoutParams(-1, dpDrnas(40)));
@@ -54,8 +55,11 @@ s = s[:a] + Path(__file__).with_name('drnas_refined_pointer.java.inc').read_text
 once('    button.setBackgroundColor(Color.argb(218, 24, 58, 86));', '    drnasStyleKey(button, true);')
 once('        v.setAlpha(0.58f);', '        v.setPressed(true); v.setActivated(true);')
 once('        v.setAlpha(1f);', '        v.setPressed(false); v.setActivated(false);')
-once('dock.addView(button, new LinearLayout.LayoutParams(dpDrnas(56), dpDrnas(48)));', '''LinearLayout.LayoutParams mouseSize = new LinearLayout.LayoutParams(dpDrnas(68), dpDrnas(54));
-      mouseSize.setMargins(dpDrnas(5), dpDrnas(4), dpDrnas(5), dpDrnas(4));
+once('dock.addView(button, new LinearLayout.LayoutParams(dpDrnas(56), dpDrnas(48)));', '''final boolean middle = key.equals("mmb");
+      final int visualTarget = middle ? (int)DrnasSkin.DOCK_TARGET_CENTRE : (int)DrnasSkin.DOCK_TARGET;
+      LinearLayout.LayoutParams mouseSize = new LinearLayout.LayoutParams(
+          dpDrnas(visualTarget), dpDrnas(Math.max(DrnasSkin.TOUCH_MIN, visualTarget)));
+      mouseSize.setMargins(dpDrnas(2), dpDrnas(2), dpDrnas(2), dpDrnas(2));
       dock.addView(button, mouseSize);''')
 once('      lp.width = dpDrnas(56 * factor);', '      lp.width = dpDrnas(68 * factor);')
 once('      lp.height = dpDrnas(48 * factor);', '''      lp.height = dpDrnas(54 * factor);
@@ -63,40 +67,44 @@ once('      lp.height = dpDrnas(48 * factor);', '''      lp.height = dpDrnas(54 
           .setMargins(dpDrnas(5 * factor), dpDrnas(4), dpDrnas(5 * factor), dpDrnas(4));''')
 once('      v.setTextSize(13f * factor);', '      v.setTextSize(14f * factor);')
 
-once('''    button.setBackground(new android.graphics.drawable.RippleDrawable(
-        android.content.res.ColorStateList.valueOf(Color.argb(95, 120, 220, 232)),
-        drnasPill(Color.argb(155, 35, 50, 71)), null));''', '    drnasStyleKey(button, false);')
+# drnasSmallKey already uses drnasStyleKey from the shared visual system.
 once('''    button.setBackground(drnasPill(enabled ? Color.rgb(35, 120, 137) :
                                           Color.rgb(29, 54, 79)));''', '    button.setActivated(enabled);')
+once('    opener.setText(drnasPrefs.getBoolean("shortcut_expanded", true) ? "⌄" : "⌨");', '''    opener.setText("");
+    opener.setDrnasIcon("keyboard", DrnasSkin.ICON_MD);
+    opener.setContentDescription("Show keyboard and shortcuts");''')
+once('      opener.setText(expand ? "⌄" : "⌨");',
+     '      opener.setContentDescription(expand ? "Hide shortcuts" : "Show shortcuts");')
+once('    settings.setText("⚙");', '''    settings.setText("");
+    settings.setDrnasIcon("settings", DrnasSkin.ICON_MD);
+    settings.setContentDescription("Control settings");''')
 once('    opener.setBackground(drnasPill(Color.rgb(37, 82, 114)));', '    drnasStyleKey(opener, false);')
 once('    settings.setBackground(drnasPill(Color.rgb(37, 82, 114)));', '    drnasStyleKey(settings, false);')
 once('    closeOptions.setAllCaps(false);', '    closeOptions.setAllCaps(false);\n    drnasStyleKey(closeOptions, false);')
 once('    gestureSettings.setText("Osjetljivost gesta");',
      '    gestureSettings.setText("Osjetljivost gesta");\n    drnasStyleKey(gestureSettings, false);')
-once('    background.setCornerRadius(dpDrnas(9));', '    background.setCornerRadius(dpDrnas(18));')
-once('background.setStroke(dpDrnas(1), Color.argb(155, 67, 119, 169));',
-     'background.setStroke(dpDrnas(1), Color.argb(100, 100, 169, 190));')
+# Surface radius and hairline are defined centrally by DrnasSkin.
 
 # Hiding zoom stops the spring and remeasures the shared dock. LMB/RMB retain
 # their listeners and their common split-touch window from the proven v4.
-once('    group.addView(zoom, new LinearLayout.LayoutParams(dpDrnas(170), dpDrnas(43)));', '''    final Button zoomToggle = new Button(this);
-    final boolean visibleZoom = drnasPrefs.getBoolean("zoom_visible", true);
-    zoomToggle.setText(visibleZoom ? "ZOOM ▾" : "ZOOM ▸");
-    drnasStyleKey(zoomToggle, false);
-    zoomToggle.setTextSize(11f);
+once('    group.addView(zoom, new LinearLayout.LayoutParams(dpDrnas(170), dpDrnas(43)));', '''    final DrnasIconButton zoomToggle = new DrnasIconButton(this);
+    final boolean visibleZoom = drnasPrefs.getBoolean("zoom_visible", false);
+    zoomToggle.setText("");
+    zoomToggle.setDrnasIcon("zoom_in", DrnasSkin.ICON_MD);
     zoomToggle.setContentDescription("Prikaži ili sakrij zoom slider");
-    LinearLayout.LayoutParams toggleSize = new LinearLayout.LayoutParams(dpDrnas(74), dpDrnas(48));
-    toggleSize.setMargins(dpDrnas(4), 0, dpDrnas(4), 0);
+    drnasStyleKey(zoomToggle, false);
+    LinearLayout.LayoutParams toggleSize = new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(48));
+    toggleSize.setMargins(dpDrnas(1), 0, dpDrnas(1), 0);
     group.addView(zoomToggle, toggleSize);
     zoom.setVisibility(visibleZoom ? View.VISIBLE : View.GONE);
-    zoom.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.rgb(96, 207, 220)));
-    zoom.setThumbTintList(android.content.res.ColorStateList.valueOf(Color.rgb(183, 242, 246)));
+    zoom.setProgressTintList(android.content.res.ColorStateList.valueOf(DrnasSkin.ACCENT));
+    zoom.setThumbTintList(android.content.res.ColorStateList.valueOf(DrnasSkin.ACCENT_BRIGHT));
     group.addView(zoom, new LinearLayout.LayoutParams(dpDrnas(120), dpDrnas(48)));
     zoomToggle.setOnClickListener(v -> {
       drnasStopSpringZoom(); zoom.setProgress(50);
       boolean show = zoom.getVisibility() != View.VISIBLE;
       zoom.setVisibility(show ? View.VISIBLE : View.GONE);
-      zoomToggle.setText(show ? "ZOOM ▾" : "ZOOM ▸");
+      zoomToggle.setContentDescription(show ? "Hide zoom controls" : "Show zoom controls");
       drnasPrefs.edit().putBoolean("zoom_visible", show).apply();
       drnasRefreshPanels();
     });''')

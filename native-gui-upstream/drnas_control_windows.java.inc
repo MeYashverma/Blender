@@ -96,11 +96,20 @@
     panel.schedule();
   }
   private void drnasPanelVisibility(View view, int visibility) {
-    view.setVisibility(visibility);
-    DrnasPanel panel = drnasPanels.get(view);
-    if (panel != null) {
-      if (visibility != View.VISIBLE) panel.popup.dismiss();
-      else panel.schedule();
+    final boolean show = visibility == View.VISIBLE;
+    view.animate().cancel();
+    final DrnasPanel panel = drnasPanels.get(view);
+    if (show) {
+      view.setAlpha(0f);
+      view.setVisibility(View.VISIBLE);
+      if (panel != null) panel.schedule();
+      view.animate().alpha(1f).setDuration(DrnasSkin.PANEL_MS).start();
+    } else {
+      // Hide / release is immediate: an animation must never extend a mouse-down or hold a modal
+      // surface over Blender input. Only expansion gets the short, non-blocking fade above.
+      view.setVisibility(View.GONE);
+      view.setAlpha(DrnasSkin.ALPHA_IDLE);
+      if (panel != null) panel.popup.dismiss();
     }
   }
   private void drnasRefreshPanels() {

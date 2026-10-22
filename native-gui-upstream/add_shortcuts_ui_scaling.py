@@ -50,13 +50,13 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
   private int drnasStickyModifiers = 0;
   private final int drnasTextWhite = Color.rgb(235, 240, 249);
 
-  /* Compact pill: small DRNAS Emu-like virtual keys, not the soft keyboard. */
-  private android.graphics.drawable.GradientDrawable drnasPill(int bg) {
+  /* One quiet surface recipe for every floating group; viewport remains the focus. */
+  private android.graphics.drawable.GradientDrawable drnasPill(int ignoredColor) {
     android.graphics.drawable.GradientDrawable background =
         new android.graphics.drawable.GradientDrawable();
-    background.setColor(bg);
-    background.setCornerRadius(dpDrnas(9));
-    background.setStroke(dpDrnas(1), Color.argb(155, 67, 119, 169));
+    background.setColor(DrnasSkin.SURFACE);
+    background.setCornerRadius(dpDrnas(DrnasSkin.RADIUS_GROUP));
+    background.setStroke(dpDrnas(DrnasSkin.HAIRLINE_WIDTH), DrnasSkin.HAIRLINE);
     return background;
   }
 
@@ -94,9 +94,14 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
   }
 
   private Button drnasSmallKey(String label, int key, int combo, LinearLayout row) {
-    Button button = new Button(this);
-    button.setAllCaps(false);
+    DrnasIconButton button = new DrnasIconButton(this);
     button.setText(label);
+    final String icon = label.equals("G") ? "move"
+        : label.equals("R") ? "rotate" : label.equals("S") ? "scale"
+        : label.equals("UNDO") ? "undo" : label.equals("DUP") ? "duplicate"
+        : label.equals("DEL") ? "trash" : label.equals("F3") ? "search"
+        : label.equals("TAB") ? "tab" : label.toLowerCase().contains("keyboard") ? "keyboard" : null;
+    if (icon != null) button.setDrnasIcon(icon, DrnasSkin.ICON_SM);
     button.setTextColor(drnasTextWhite);
     button.setTextSize(11f);
     button.setPadding(dpDrnas(3), 0, dpDrnas(3), 0);
@@ -104,7 +109,7 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
     button.setMinimumHeight(0);
     button.setMinWidth(0);
     button.setMinimumWidth(0);
-    button.setBackground(drnasPill(Color.rgb(29, 54, 79)));
+    drnasStyleKey(button, false);
     button.setOnClickListener(v -> drnasTap(key, combo));
     row.addView(button);
     drnasSmallKeys.add(button);
@@ -139,9 +144,10 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
   private TextView drnasUiLabel(String text) {
     TextView label = new TextView(this);
     label.setText(text);
-    label.setTextColor(drnasTextWhite);
-    label.setGravity(Gravity.CENTER);
-    label.setTextSize(12f);
+    label.setTextColor(DrnasSkin.TEXT_SECONDARY);
+    label.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+    label.setTextSize(11f);
+    label.setPadding(dpDrnas(DrnasSkin.SPACE_S), dpDrnas(2), dpDrnas(DrnasSkin.SPACE_S), dpDrnas(2));
     return label;
   }
 
@@ -155,7 +161,7 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
     line.setPadding(dpDrnas(3), dpDrnas(2), dpDrnas(3), dpDrnas(2));
     line.setBackground(drnasPill(Color.argb(238, 17, 34, 53)));
 
-    final Button opener = new Button(this);
+    final DrnasIconButton opener = new DrnasIconButton(this);
     opener.setText("⌨");
     opener.setAllCaps(false);
     opener.setTextColor(drnasTextWhite);
@@ -164,7 +170,7 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
     opener.setMinWidth(0); opener.setMinimumWidth(0);
     opener.setMinHeight(0); opener.setMinimumHeight(0);
     opener.setBackground(drnasPill(Color.rgb(37, 82, 114)));
-    line.addView(opener, new LinearLayout.LayoutParams(dpDrnas(47), dpDrnas(42)));
+    line.addView(opener, new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(48)));
 
     final android.widget.HorizontalScrollView scroll =
         new android.widget.HorizontalScrollView(this);
@@ -212,7 +218,7 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
       opener.setText(expand ? "✕" : "⌨");
     });
 
-    final Button settings = new Button(this);
+    final DrnasIconButton settings = new DrnasIconButton(this);
     settings.setText("⚙");
     settings.setAllCaps(false);
     settings.setTextColor(drnasTextWhite);
@@ -221,7 +227,7 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
     settings.setMinWidth(0); settings.setMinimumWidth(0);
     settings.setMinHeight(0); settings.setMinimumHeight(0);
     settings.setBackground(drnasPill(Color.rgb(37, 82, 114)));
-    line.addView(settings, new LinearLayout.LayoutParams(dpDrnas(44), dpDrnas(42)));
+    line.addView(settings, new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(48)));
 
     final FrameLayout.LayoutParams location = new FrameLayout.LayoutParams(
         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -229,6 +235,7 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
     location.topMargin = dpDrnas(6);
     location.leftMargin = dpDrnas(7);
     addContentView(line, location);
+    drnasRegisterSkinGroup(line);
     line.setTranslationX(drnasPrefs.getFloat("shortcut_strip_x", 0));
     line.setTranslationY(drnasPrefs.getFloat("shortcut_strip_y", 0));
 
@@ -241,16 +248,19 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
     options.addView(wheelHeading);
     final LinearLayout wheel = new LinearLayout(this);
     wheel.setGravity(Gravity.CENTER_VERTICAL);
-    final Button smaller = new Button(this);
-    smaller.setText("−"); smaller.setAllCaps(false);
-    final Button larger = new Button(this);
-    larger.setText("+"); larger.setAllCaps(false);
+    final DrnasIconButton smaller = new DrnasIconButton(this);
+    smaller.setText(""); smaller.setDrnasIcon("minus", DrnasSkin.ICON_SM);
+    smaller.setContentDescription("Decrease size"); drnasStyleKey(smaller, false);
+    final DrnasIconButton larger = new DrnasIconButton(this);
+    larger.setText(""); larger.setDrnasIcon("plus", DrnasSkin.ICON_SM);
+    larger.setContentDescription("Increase size"); drnasStyleKey(larger, false);
     final android.widget.SeekBar sizeSeek = new android.widget.SeekBar(this);
     sizeSeek.setMax(90);  // 60% to 150%.
     sizeSeek.setProgress(drnasButtonPercent - 60);
-    wheel.addView(smaller, new LinearLayout.LayoutParams(dpDrnas(50), dpDrnas(44)));
-    wheel.addView(sizeSeek, new LinearLayout.LayoutParams(dpDrnas(155), dpDrnas(44)));
-    wheel.addView(larger, new LinearLayout.LayoutParams(dpDrnas(50), dpDrnas(44)));
+    wheel.addView(smaller, new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(48)));
+    drnasStyleSeekBar(sizeSeek);
+    wheel.addView(sizeSeek, new LinearLayout.LayoutParams(dpDrnas(155), dpDrnas(48)));
+    wheel.addView(larger, new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(48)));
     options.addView(wheel);
     final TextView sizeValue = drnasUiLabel(drnasButtonPercent + "% • LMB/RMB + shortcut tipke");
     options.addView(sizeValue);
@@ -284,6 +294,7 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
     final TextView guiLabel = drnasUiLabel("100%  • promjena nakon ponovnog pokretanja");
     options.addView(guiLabel);
     final android.widget.SeekBar uiSeek = new android.widget.SeekBar(this);
+    drnasStyleSeekBar(uiSeek);
     uiSeek.setMax(125);  // 75..200%.
     final int loaded = Math.max(75, Math.min(200,
         drnasPrefs.getInt("blender_ui_percent", 100)));

@@ -14,7 +14,12 @@
   }
 
   private void drnasBindInput(TextView button, int key, int mouseDown, int mouseUp) {
-    final String label = button.getText().toString().replace(" •", "");
+    final CharSequence visibleLabel = button.getText();
+    final CharSequence accessibleLabel = button.getContentDescription();
+    final boolean iconOnly = visibleLabel == null || visibleLabel.length() == 0;
+    final String label = (iconOnly
+        ? accessibleLabel == null ? "" : accessibleLabel.toString()
+        : visibleLabel.toString()).replace(" •", "");
     final DrnasInputHold hold = new DrnasInputHold(pressed -> {
       if (mouseDown != 0) drnasSendInput(pressed ? mouseDown : mouseUp, 0, 0, pressed ? 1 : 0);
       else {
@@ -38,6 +43,7 @@
     button.setOnTouchListener((v, event) -> {
       switch (event.getActionMasked()) {
         case MotionEvent.ACTION_DOWN:
+          drnasWakeSkin();
           origin[0] = event.getX(); origin[1] = event.getY(); moved[0] = false;
           touching[0] = true; downAt[0] = event.getEventTime();
           if (mouseDown != 0) v.getParent().requestDisallowInterceptTouchEvent(true);
@@ -66,8 +72,9 @@
       }
       button.setPressed(touching[0] && !hold.isLatched());
       button.setActivated(hold.isHeld());
-      boolean changed = !button.getText().toString().equals(label + (hold.isLatched() ? " •" : ""));
-      button.setText(label + (hold.isLatched() ? " •" : ""));
+      final String nextLabel = iconOnly ? "" : label + (hold.isLatched() ? " •" : "");
+      boolean changed = !button.getText().toString().equals(nextLabel);
+      button.setText(nextLabel);
       button.setContentDescription(label + (hold.isLatched() ? " — zaključano; dodirni za otključavanje" : " — dvostruki dodir za zaključavanje"));
       if (changed && mouseDown == 0) drnasButtonSizes(drnasButtonPercent, false);
       return true;
@@ -75,7 +82,7 @@
     button.setOnClickListener(v -> {
       if (hold.isLatched()) hold.cancel();
       else { hold.down(android.os.SystemClock.uptimeMillis()); hold.up(android.os.SystemClock.uptimeMillis(), false); }
-      button.setText(label); button.setPressed(false); button.setActivated(false);
+      button.setText(iconOnly ? "" : label); button.setPressed(false); button.setActivated(false);
     });
   }
 
@@ -84,18 +91,27 @@
   private void drnasMouseButtonSizes(int percent, boolean save) {
     drnasMouseButtonPercent = Math.max(60, Math.min(150, percent));
     float factor = drnasMouseButtonPercent / 100f;
-    for (TextView button : drnasResizeTargets.values()) {
-      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpDrnas(68 * factor), dpDrnas(54 * factor));
-      lp.setMargins(dpDrnas(5 * factor), dpDrnas(4), dpDrnas(5 * factor), dpDrnas(4));
-      button.setLayoutParams(lp); button.setTextSize(14f * factor);
+    for (java.util.Map.Entry<String, TextView> entry : drnasResizeTargets.entrySet()) {
+      final String key = entry.getKey();
+      final TextView button = entry.getValue();
+      final boolean middle = key.equals("mmb");
+      final boolean wheel = key.startsWith("wheel") || key.startsWith("hleft") || key.startsWith("hright");
+      final float target = middle ? DrnasSkin.DOCK_TARGET_CENTRE
+          : wheel ? DrnasSkin.TOUCH_MIN : DrnasSkin.DOCK_TARGET;
+      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+          dpDrnas(Math.max(DrnasSkin.TOUCH_MIN, target * factor)),
+          dpDrnas(Math.max(DrnasSkin.TOUCH_MIN, target * factor)));
+      lp.setMargins(dpDrnas(wheel ? 0 : 2), dpDrnas(2), dpDrnas(wheel ? 0 : 2), dpDrnas(2));
+      button.setLayoutParams(lp);
+      if (!(button instanceof DrnasIconTextView)) button.setTextSize(14f * factor);
     }
     if (drnasDockGrip != null) {
       drnasDockGrip.setLayoutParams(new LinearLayout.LayoutParams(dpDrnas(30 * factor), dpDrnas(48 * factor)));
       ((TextView)drnasDockGrip).setTextSize(16 * factor);
     }
     if (drnasDockZoomToggle != null) {
-      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpDrnas(74 * factor), dpDrnas(48 * factor));
-      lp.setMargins(dpDrnas(4 * factor), 0, dpDrnas(4 * factor), 0);
+      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(48));
+      lp.setMargins(dpDrnas(1), 0, dpDrnas(1), 0);
       drnasDockZoomToggle.setLayoutParams(lp); ((TextView)drnasDockZoomToggle).setTextSize(11f * factor);
     }
     if (drnasDockZoomSlider != null) {
@@ -111,7 +127,7 @@
     options.addView(drnasUiLabel("VELIČINA MIŠA I ZOOMA"));
     final TextView value = drnasUiLabel(drnasMouseButtonPercent + "% • LMB/RMB i zoom blok");
     options.addView(value);
-    SeekBar size = new SeekBar(this); size.setMax(90); size.setProgress(drnasMouseButtonPercent - 60);
+    SeekBar size = new SeekBar(this); drnasStyleSeekBar(size); size.setMax(90); size.setProgress(drnasMouseButtonPercent - 60);
     options.addView(size, new LinearLayout.LayoutParams(-1, dpDrnas(42)));
     size.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
       public void onProgressChanged(SeekBar b, int progress, boolean user) {

@@ -20,6 +20,7 @@ s = s.replace('LMB/RMB + shortcut tipke', 'tipkovnica i naredbe')
 once('VELIČINA TIPKI • kotačić / – +', 'VELIČINA TIPKOVNICE I NAREDBI')
 once('    installDrnasMouseOptions(optionRows);', '    drnasInstallMouseSizeOptions(optionRows);\n    installDrnasMouseOptions(optionRows);')
 once('    drnasPosition(group, "zoom", true, 12, 18, 340, 80);', '''    drnasMouseDock = group; drnasDockGrip = heading;
+    drnasRegisterSkinGroup(group);
     drnasDockZoomToggle = zoomToggle; drnasDockZoomSlider = zoom;
     group.setClipChildren(false); group.setClipToPadding(false);
     drnasPosition(group, "zoom", true, 12, 18, 340, 80);''')
@@ -46,30 +47,7 @@ once('    row.setOrientation(LinearLayout.VERTICAL);', '''    row.setOrientation
     row.setClipChildren(false); row.setClipToPadding(false);
     top.setClipChildren(false); top.setClipToPadding(false);
     bottom.setClipChildren(false); bottom.setClipToPadding(false);''')
-once('    button.setElevation(dpDrnas(2));', '''    button.setElevation(dpDrnas(5));
-    android.animation.StateListAnimator feedback = new android.animation.StateListAnimator();
-    android.animation.AnimatorSet press = new android.animation.AnimatorSet();
-    press.playTogether(android.animation.ObjectAnimator.ofFloat(button, "scaleX", 0.96f),
-        android.animation.ObjectAnimator.ofFloat(button, "scaleY", 0.96f),
-        android.animation.ObjectAnimator.ofFloat(button, "translationY", dpDrnas(1)),
-        android.animation.ObjectAnimator.ofFloat(button, "elevation", dpDrnas(1)));
-    press.setDuration(75);
-    android.animation.AnimatorSet locked = new android.animation.AnimatorSet();
-    locked.playTogether(android.animation.ObjectAnimator.ofFloat(button, "scaleX", 0.985f),
-        android.animation.ObjectAnimator.ofFloat(button, "scaleY", 0.985f),
-        android.animation.ObjectAnimator.ofFloat(button, "translationY", 0),
-        android.animation.ObjectAnimator.ofFloat(button, "elevation", dpDrnas(3)));
-    locked.setDuration(90);
-    android.animation.AnimatorSet release = new android.animation.AnimatorSet();
-    release.playTogether(android.animation.ObjectAnimator.ofFloat(button, "scaleX", 1),
-        android.animation.ObjectAnimator.ofFloat(button, "scaleY", 1),
-        android.animation.ObjectAnimator.ofFloat(button, "translationY", 0),
-        android.animation.ObjectAnimator.ofFloat(button, "elevation", dpDrnas(5)));
-    release.setDuration(130);
-    feedback.addState(new int[] {android.R.attr.state_pressed}, press);
-    feedback.addState(new int[] {android.R.attr.state_activated}, locked);
-    feedback.addState(new int[] {}, release);
-    button.setStateListAnimator(feedback);''')
+# Press feedback is defined by DrnasSkin via drnasStyleKey; do not install a second animator.
 once('  private void requestAllFilesAccess() {', Path(__file__).with_name('drnas_hold_bindings.java.inc').read_text() + '\n  private void requestAllFilesAccess() {')
 p.write_text(s)
 (java / 'DrnasInputHold.java').write_text(Path(__file__).with_name('DrnasInputHold.java').read_text())

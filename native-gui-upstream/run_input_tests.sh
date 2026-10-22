@@ -20,6 +20,8 @@ CLASSES=(
   DrnasGestureEngine
   DrnasShortcutStrip
   DrnasGpuPolicy
+  DrnasSkin
+  DrnasIcons
 )
 TESTS=(
   DrnasInputHoldTest
@@ -31,6 +33,7 @@ TESTS=(
   DrnasGestureEngineTest
   DrnasShortcutStripTest
   DrnasGpuPolicyTest
+  DrnasVisualDesignTest
 )
 
 sources=()
@@ -41,7 +44,7 @@ javac -Xlint:deprecation -d "$OUT" "${sources[@]}"
 
 status=0
 for name in "${TESTS[@]}"; do
-  if [ "$name" = "DrnasGpuPolicyTest" ]; then
+  if [ "$name" = "DrnasGpuPolicyTest" ] || [ "$name" = "DrnasVisualDesignTest" ]; then
     java -cp "$OUT" "org.blender.blender.$name"
   else
     java -cp "$OUT" "$name"

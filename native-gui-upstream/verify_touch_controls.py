@@ -101,9 +101,9 @@ check('dockKeys.add("mmb")' in activity, "the dock must host the middle button")
 check("drnasHasCapability(DRNAS_CAP_MIDDLE)) {\n      dockKeys.add" in activity,
       "the middle button must only appear when the native library supports it")
 check("drnasDockExtraButtons(dock);" in activity, "the dock must add wheel buttons")
-check('drnasDockWheelButton(dock, "W\\u25B2", 6, 1f' in activity,
+check('drnasDockWheelButton(dock, "Scroll up", 6, 1f' in activity,
       "wheel up must send a real wheel event")
-check('drnasDockWheelButton(dock, "W\\u25BC", 6, -1f' in activity,
+check('drnasDockWheelButton(dock, "Scroll down", 6, -1f' in activity,
       "wheel down must send a real wheel event")
 
 # ---------------------------------------------------------------- 4. Java <-> native contract
@@ -210,8 +210,12 @@ logic_classes = sorted(p.name for p in patch_dir.glob("Drnas*.java")
                        and "Activity" not in p.name
                        and p.name not in {"DrnasGpuOptions.java", "DrnasGpuProfile.java",
                                           "DrnasInitLog.java", "DrnasLanguage.java",
-                                          "DrnasGpuPolicy.java"})
+                                          "DrnasGpuPolicy.java", "DrnasChrome.java", "DrnasSkin.java", "DrnasIcons.java",
+                                          "DrnasIconButton.java", "DrnasIconTextView.java",
+                                          "DrnasOrientationGizmo.java"})
 test_names = {p.name for p in patch_dir.glob("*Test.java")}
+check("DrnasVisualDesignTest.java" in test_names,
+      "the shared Blender-dark palette and icon contract need a design-system test")
 for source in logic_classes:
     stem = source[:-len(".java")]
     check(f"{stem}Test.java" in test_names, f"{stem} has no unit test")

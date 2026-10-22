@@ -49,16 +49,15 @@ once('    button.setTextSize(11f);', '''    button.setTextSize(13f);
     button.setFocusable(false);
     button.setContentDescription(label);''')
 once('      button.setTextSize(10.5f * factor);', '      button.setTextSize(13f * factor);')
-once('    background.setColor(bg);', '''    background.setColors(new int[] {Color.argb(180, 54, 79, 101), bg});
-    background.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM);''')
-once('    button.setBackground(drnasPill(Color.rgb(29, 54, 79)));', '''    button.setBackground(new android.graphics.drawable.RippleDrawable(
-        android.content.res.ColorStateList.valueOf(Color.argb(95, 120, 220, 232)),
-        drnasPill(Color.argb(155, 35, 50, 71)), null));''')
+# Shared DrnasSkin/DrnasChrome tokens replace the previous gradient and per-key background.
 once('    options.addView(drnasUiLabel("EDIT: pomakni panel prstom, DONE: spremi položaj"));',
      '    installDrnasMouseOptions(options);\n    options.addView(drnasUiLabel("EDIT: pomakni panel prstom, DONE: spremi položaj"));')
 # Match the EMU mouse dock: one movable grip + LMB + RMB + zoom block.
 once('    group.setOrientation(LinearLayout.VERTICAL);', '    group.setOrientation(LinearLayout.HORIZONTAL);')
-once('    heading.setText("ZOOM / MOVE");', '    heading.setText("⠿");')
+once('    heading.setText("ZOOM / MOVE");', '''    heading.setText("");
+    if (heading instanceof DrnasIconTextView) {
+      ((DrnasIconTextView)heading).setDrnasIcon("grip", DrnasSkin.ICON_MD, DrnasSkin.ICON_SECONDARY, false);
+    }''')
 once('    group.setBackgroundColor(Color.argb(220, 22, 52, 73));',
      '    group.setBackground(drnasPill(Color.argb(155, 16, 24, 37)));')
 once('    group.addView(heading, new LinearLayout.LayoutParams(-1, dpDrnas(26)));',

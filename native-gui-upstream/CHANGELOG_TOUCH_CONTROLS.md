@@ -5,6 +5,33 @@ Frane12/DRNAS-Native-Blender, which is a strict superset of every feature/fix br
 repository (v8 editor, v9 pointer+IME, v10 floating windows/stretch). Upstream Blender source stays
 pinned at `simfeo/blender` `d93bd33cba768e19ee4387a31c0ea137ee2f0047`.
 
+## Visual redesign — Blender dark control layer
+
+* Replaced the blue gradient / bright outlined pill treatment with a shared matte Blender-dark
+  surface, restrained selection-blue active state, subtle hairlines, consistent radii/spacing, and
+  120–180 ms feedback. A six-second idle fade remains legible; collapsed navigation stays visible
+  at a discoverable opacity. Controls never fade out or delay native input.
+* Added local vector glyphs (no dependency or emoji): three differentiated mouse buttons, orbit,
+  pan, zoom, move, rotate, scale, undo/redo, duplicate, delete, save, keyboard, settings, frame,
+  view direction, orientation, lock, reset, scroll directions, and state/utility symbols. The dock
+  now orders LMB–MMB–RMB around the easier-to-reach, larger MMB target; scroll actions are compact
+  icon targets and horizontal wheel lives in settings rather than adding permanent dock clutter.
+* Rebuilt the navigation widget around a small colored XYZ orientation puck, drag orbit/pan, zoom
+  controls, and a separately expandable view-direction row. The shortcut strip starts collapsed
+  after a one-time visual migration and expands as a single scrollable contextual toolbar. The
+  viewport remains the dominant surface.
+* Settings reuse the same dark surfaces, short section headings, custom-tinted switches/sliders,
+  and icon controls instead of default Android button colors. Touch-target geometry is kept separate
+  from the glyph size; mouse and shortcut controls stay at or above 48 dp.
+* Added `DrnasVisualDesignTest`: validates required vector names and path syntax, Blender-dark
+  palette, contrast over light/mid/dark viewports, touch-vs-icon sizing, opacity hierarchy and fast
+  transitions. Android drawing classes are compiled in the APK; they are not falsely described as
+  JVM-only tests.
+* **Screenshot gate remains open:** this sandbox has no Android device/emulator or `adb`, so the
+  actual installed Blender viewport has not yet been screenshot-inspected. The native build/CI and
+  design tokens are not a substitute for that visual check; physical-device confirmation remains
+  required before calling the visual redesign finished.
+
 ## Confirmed defects fixed
 
 1. **Dead shortcut keys.** `convertAndroidKey()` in `GHOST_SystemAndroid.cc` maps only A–Z, 0–9,
@@ -75,7 +102,8 @@ pinned at `simfeo/blender` `d93bd33cba768e19ee4387a31c0ea137ee2f0047`.
 * `patch_native_touch_extra.py` — deterministic native extension (actions 8–12, extended keycodes,
   `nativeDrnasCapabilities()`), anchored with `once()` assertions and self-checks.
 * `patch_drnas_touch_layer.py` — deterministic Java integration; every anchor must occur exactly
-  once, superseded code must disappear, and the six logic classes are installed into the APK tree.
+  once, superseded code must disappear, and the input, skin, icon and drawing classes are installed
+  into the APK tree.
 * `verify_touch_controls.py` — cross-language contract gate (Java action numbers vs. native
   dispatch, capability bits on both sides, dock/keyboard completeness, release paths, one definition
   of each lifecycle method, Android-free logic classes, hosted tests).

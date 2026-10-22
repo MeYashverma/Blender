@@ -98,6 +98,9 @@ jobs:
           grep -q 'libblender.so' /tmp/report.txt || { echo "::error title=APK::no libblender.so in the APK"; exit 1; }
           grep -q 'nativeOnDrnasInput' /tmp/report.txt || { echo "::error title=APK::the input bridge is missing from libblender.so"; exit 1; }
           grep -q 'DrnasGestureEngine' /tmp/report.txt || { echo "::error title=APK::the touch classes are missing from classes.dex"; exit 1; }
+          grep -q 'DrnasSkin' /tmp/report.txt || { echo "::error title=APK::the shared visual system is missing from classes.dex"; exit 1; }
+          grep -q 'DrnasIconTextView' /tmp/report.txt || { echo "::error title=APK::the vector mouse buttons are missing from classes.dex"; exit 1; }
+          grep -q 'DrnasOrientationGizmo' /tmp/report.txt || { echo "::error title=APK::the orientation gizmo is missing from classes.dex"; exit 1; }
           echo "APK verified"
 
       - name: Report on the pull request

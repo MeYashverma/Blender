@@ -21,7 +21,7 @@
       int value, String suffix, java.util.function.IntConsumer changed) {
     final TextView label = drnasUiLabel(title + ": " + value + suffix);
     label.setPadding(0, dpDrnas(7), 0, 0); rows.addView(label);
-    SeekBar bar = new SeekBar(this); bar.setMax(max - min);
+    SeekBar bar = new SeekBar(this); drnasStyleSeekBar(bar); bar.setMax(max - min);
     bar.setProgress(Math.max(0, Math.min(max - min, value - min)));
     rows.addView(bar, new LinearLayout.LayoutParams(-1, dpDrnas(42)));
     bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {

@@ -41,6 +41,7 @@ once('    installDrnasMouseOptions(optionRows);', '''    installDrnasMouseOption
     final android.widget.Switch smoothZoom = new android.widget.Switch(this);
     smoothZoom.setText("Smooth zoom (kao EmuDRNAS)");
     smoothZoom.setTextColor(drnasTextWhite); smoothZoom.setTextSize(12);
+    drnasStyleSwitch(smoothZoom);
     smoothZoom.setChecked(drnasSmoothZoomEnabled);
     optionRows.addView(smoothZoom);
     smoothZoom.setOnCheckedChangeListener((v, enabled) -> {

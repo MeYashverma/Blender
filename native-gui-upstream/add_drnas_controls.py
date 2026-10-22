@@ -138,7 +138,9 @@ methods="""
     group.setOrientation(LinearLayout.VERTICAL);
     group.setGravity(Gravity.CENTER);
     group.setBackgroundColor(Color.argb(220, 22, 52, 73));
-    final TextView heading = new TextView(this);
+    final DrnasIconTextView heading = new DrnasIconTextView(this);
+    heading.setDrnasIcon("grip", DrnasSkin.ICON_MD, DrnasSkin.ICON_SECONDARY, false);
+    heading.setContentDescription("Move controls");
     heading.setText("ZOOM / MOVE");
     heading.setTextSize(12);
     heading.setGravity(Gravity.CENTER);

@@ -1,7 +1,27 @@
 # Test report — touch control layer
 
-Status: **CI-green**. Every automated check below ran on GitHub Actions for this branch
-(workflow `native-touch-controls.yml`, job `validate`). Nothing is claimed from a device.
+Status: prior control implementation **CI-green**; **visual-redesign validation is pending** the current branch run. The patch chain and both source verifiers have passed locally. This sandbox has no JDK, Android SDK, emulator or `adb`, so the JVM suite and APK build must complete in CI. Nothing is claimed from a device.
+
+## Visual redesign status (2026-10-22)
+
+* Replaced the high-saturation gradient debug-pill style with shared `DrnasSkin` Blender-dark
+  surfaces, thin separators, restrained Blender-blue active feedback, and consistent spacing/radii.
+* Added local stroked vector paths and `DrnasChrome` drawing primitives; the LMB/MMB/RMB dock uses
+  differentiated mouse glyphs, with MMB centered/larger. Wheel controls are icon-led; horizontal
+  scroll is kept in settings instead of permanently widening the dock.
+* Added a compact XYZ orientation puck, icon-led orbit/pan/zoom, and a separately expandable view
+  direction row. A one-time preference migration collapses the shortcut strip and zoom slider by
+  default; shortcuts remain available as a scrollable strip.
+* Active, idle and minimized opacity are implemented (`1.0`, `0.86`, `0.58`), with six-second idle
+  reduction, and 120–180 ms feedback. Targets retain 48 dp minimum geometry separately from the
+  smaller icons. Switches and SeekBars use the same accent/surface colors.
+* New automated design-system tests cover icon/path coverage, contrast over three viewport
+  luminances, sizing, alpha hierarchy and animation timing. Local tree-sitter parse of the patched
+  activity and all 30 DRNAS Java files passed; both patch verifiers passed. **JVM test execution and
+  Android compilation are pending CI** for this revision.
+* **Actual-app screenshot gate: NOT PASSED.** There is no Android device/emulator in this sandbox.
+  The app still needs to be installed and captured on a landscape phone; screenshots are required
+  before calling the visual quality gate complete. Do not treat an SVG/mockup as that evidence.
 
 ## What was actually executed and passed
 
@@ -38,8 +58,9 @@ Bugs the CI compile and tests actually caught (and which were fixed):
    (two fingers = pan/zoom trackpad, three fingers = Shift+MMB pan); it is deliberately not
    re-routed through the overlay because that gesture is also how Blender's own panels, lists and
    file browser scroll. Orbit is available in touchpad mode, on the navigation widget and on the
-   MMB dock button. **Two-finger orbit in direct mode, and the whole native middle-button path,
-   require a rebuilt `libblender.so`** — see the blocker below.
+   MMB dock button. **Two-finger orbit in direct mode remains intentionally unsupported** to preserve
+   Blender panel/file-browser scrolling. The middle-button bridge is present in the previously
+   shipped APK, but physical-device behaviour has not been exercised.
 3. Right-click context menus from the RMB button and the two-finger tap.
 4. MMB press-and-hold drag, and MMB + LMB combinations.
 5. Numeric transform entry through the Android keyboard (`G`, digits, `Enter`).
@@ -92,12 +113,10 @@ existing Alpha 1.0 with a different signing key first.
 
 ## Remaining blockers and repro steps
 
-* **Native input extension is not built here.** Middle button (actions 8/9), Shift hold (10/11),
-  horizontal wheel (12), `nativeDrnasCapabilities()` and the F1–F12/numpad/Home keycodes live in
-  `patch_native_touch_extra.py`, which edits `GHOST_AndroidMain.cc` / `GHOST_SystemAndroid.cc`.
-  Without those, the Java layer probes the capability bitmask, reports 0, and degrades: the MMB
-  dock button is absent, orbit gestures fall back to scrolling, and the navigation widget's
-  frame/axis keys are shown disabled with "needs the native input update" instead of doing nothing.
+* **Physical-device verification is still required.** The last released ARM64 APK contains the
+  native input extension (actions 8/9, Shift hold 10/11, horizontal wheel 12, capability probe and
+  extended keys), verified from the rebuilt library. The redesign's new Android drawing classes
+  still need a successful CI compile/package, then screenshots and interaction checks on a device.
   Repro of the degraded state: apply only the Java patches and open the dock.
 * **No APK was produced in this environment** (no NDK/Java toolchain here); the APK path is the
   repository's own native build workflow, which now also runs the new patches, the verifier and

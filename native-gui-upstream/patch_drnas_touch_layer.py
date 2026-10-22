@@ -111,10 +111,10 @@ once(
     '    for (String key : new String[] {"lmb", "rmb"}) {',
     """    final java.util.ArrayList<String> dockKeys = new java.util.ArrayList<>();
     dockKeys.add("lmb");
-    dockKeys.add("rmb");
     if (drnasHasCapability(DRNAS_CAP_MIDDLE)) {
       dockKeys.add("mmb");
     }
+    dockKeys.add("rmb");
     for (String key : dockKeys) {""",
     "dock button list",
 )
@@ -138,6 +138,38 @@ once(
     drnasMouse("RMB", 4, 5, false, "rmb");
     drnasMouse("MMB", 8, 9, false, "mmb");""",
     "mouse button creation",
+)
+
+# ------------------------------------------------------------------ 5a. one-time visual migration keeps the new compact default
+once(
+    '    drnasPrefs = getSharedPreferences("drnas_native_controls_v1", MODE_PRIVATE);',
+    '''    drnasPrefs = getSharedPreferences("drnas_native_controls_v1", MODE_PRIVATE);
+    if (!drnasPrefs.getBoolean("visual_design_v1", false)) {
+      drnasPrefs.edit().putBoolean("shortcut_expanded", false)
+          .putBoolean("zoom_visible", false).putBoolean("nav_views_visible", false)
+          .putBoolean("visual_design_v1", true).apply();
+    }''',
+    "compact visual defaults",
+)
+
+# ------------------------------------------------------------------ 5b. semantic vector mouse targets
+once(
+    """  private void drnasMouse(String label, int down, int up, boolean left, String key) {
+    final TextView button = new TextView(this);
+    button.setText(label);
+    button.setTextSize(19);
+    button.setTextColor(Color.WHITE);
+    button.setGravity(Gravity.CENTER);
+    drnasStyleKey(button, true);""",
+    """  private void drnasMouse(String label, int down, int up, boolean left, String key) {
+    final DrnasIconTextView button = new DrnasIconTextView(this);
+    button.setText(\"\");
+    button.setContentDescription(label);
+    button.setDrnasIcon(key.equals(\"lmb\") ? DrnasIcons.LMB
+        : key.equals(\"mmb\") ? DrnasIcons.MMB : DrnasIcons.RMB,
+        DrnasSkin.ICON_LG, DrnasSkin.ICON, false);
+    drnasStyleKey(button, true);""",
+    "vector mouse buttons",
 )
 
 # ------------------------------------------------------------------ 6. physical mouse path
@@ -317,6 +349,10 @@ required = [
     ("DrnasMouseState", "mouse state"),
     ("DrnasRelativePad", "relative pad"),
     ("DrnasControlLayout", "layout model"),
+    ("DrnasSkin", "shared visual tokens"),
+    ("DrnasIconTextView", "vector mouse controls"),
+    ("DrnasOrientationGizmo", "XYZ orientation gizmo"),
+    ("drnasRegisterSkinGroup", "idle opacity state"),
     ("private native int nativeDrnasCapabilities();", "capability declaration"),
     ("drnasSetInputMode(", "mode switching"),
     ("installDrnasNavWidget(", "navigation widget"),
@@ -358,6 +394,12 @@ shipped = [
     "DrnasControlLayout.java",
     "DrnasGestureEngine.java",
     "DrnasShortcutStrip.java",
+    "DrnasSkin.java",
+    "DrnasIcons.java",
+    "DrnasChrome.java",
+    "DrnasIconTextView.java",
+    "DrnasIconButton.java",
+    "DrnasOrientationGizmo.java",
 ]
 for name in shipped:
     source = patch_dir / name

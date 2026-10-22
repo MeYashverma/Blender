@@ -42,6 +42,7 @@
     mode.setText("Miš / touchpad (isključeno: direktni dodir)");
     mode.setTextColor(drnasTextWhite);
     mode.setTextSize(12);
+    drnasStyleSwitch(mode);
     mode.setChecked(drnasRelativeMouse);
     options.addView(mode);
     mode.setOnCheckedChangeListener((v, enabled) -> {
@@ -56,6 +57,7 @@
     effect.setText("Efekt pokazivača / krug klika (miš način)");
     effect.setTextColor(drnasTextWhite);
     effect.setTextSize(12);
+    drnasStyleSwitch(effect);
     effect.setChecked(drnasPointerEffect);
     options.addView(effect);
     effect.setOnCheckedChangeListener((v, enabled) -> {
@@ -66,6 +68,7 @@
     TextView speedLabel = drnasUiLabel("Brzina miša: " + Math.round(drnasMouseSpeed * 100) + "%");
     options.addView(speedLabel);
     SeekBar speed = new SeekBar(this);
+    drnasStyleSeekBar(speed);
     speed.setMax(175); speed.setProgress(Math.round(drnasMouseSpeed * 100) - 25);
     options.addView(speed, new LinearLayout.LayoutParams(-1, dpDrnas(36)));
     speed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -78,6 +81,14 @@
       public void onStopTrackingTouch(SeekBar b) {}
     });
     options.addView(drnasUiLabel("Miš: tap = lijevi klik • 2 prsta = zoom / desni tap"));
+    if (drnasHasCapability(DRNAS_CAP_HSCROLL)) {
+      options.addView(drnasUiLabel("Horizontal scroll"));
+      final LinearLayout horizontalWheel = new LinearLayout(this);
+      horizontalWheel.setOrientation(LinearLayout.HORIZONTAL);
+      drnasDockWheelButton(horizontalWheel, "Scroll left", 12, -1f, "hleft");
+      drnasDockWheelButton(horizontalWheel, "Scroll right", 12, 1f, "hright");
+      options.addView(horizontalWheel, new LinearLayout.LayoutParams(-2, dpDrnas(52)));
+    }
   }
 
   private void drnasRefreshMouseLayer() {
