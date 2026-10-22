@@ -145,20 +145,20 @@ jobs:
           for f in "${FILES[@]}"; do test -s "$f"; done
           NOTES=apk/RELEASE-NOTES.md
           cat > "$NOTES" <<'EOF'
-Test build of the DRNAS Native Blender touch control layer. This revision adds a compact
-Blender-dark visual system, local vector mouse and shortcut icons, a centered MMB dock target,
-a small XYZ orientation puck, collapsible shortcuts/navigation, consistent pressed/idle states,
-and a rethemed settings surface. Input remains on Blender's existing native bridge.
+          Test build of the DRNAS Native Blender touch control layer. This revision adds a compact
+          Blender-dark visual system, local vector mouse and shortcut icons, a centered MMB dock target,
+          a small XYZ orientation puck, collapsible shortcuts/navigation, consistent pressed/idle states,
+          and a rethemed settings surface. Input remains on Blender's existing native bridge.
 
-Install notes: built from the pinned upstream commit with the deterministic patch chain. ARM64
-only. It carries the same application id as Alpha 1.0, so if an Alpha 1.0 build with a different
-signing key is already installed, uninstall it first (your projects in shared storage are not
-affected).
+          Install notes: built from the pinned upstream commit with the deterministic patch chain. ARM64
+          only. It carries the same application id as Alpha 1.0, so if an Alpha 1.0 build with a different
+          signing key is already installed, uninstall it first (your projects in shared storage are not
+          affected).
 
-This is a TEST build from a pull request branch, not an official PreAlpha/Alpha release. No
-physical-device screenshot or touch test has been performed: the actual-app visual quality gate
-remains open. Please install on a landscape phone, capture the Blender viewport with the controls
-visible, and report issues. See TEST_REPORT.md for the remaining verification list.
+          This is a TEST build from a pull request branch, not an official PreAlpha/Alpha release. No
+          physical-device screenshot or touch test has been performed: the actual-app visual quality gate
+          remains open. Please install on a landscape phone, capture the Blender viewport with the controls
+          visible, and report issues. See TEST_REPORT.md for the remaining verification list.
           EOF
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${FILES[@]}" --clobber
