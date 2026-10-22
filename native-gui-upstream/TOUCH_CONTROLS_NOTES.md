@@ -11,11 +11,11 @@ the native bridge and the on-screen controls are checked against it by
 | 1 | cursor move to (x, y) in native space | `drnasSendInput(1, …)`, gesture sink |
 | 2 / 3 | left button down / up | `drnasEmitMouse(LEFT, …)` |
 | 4 / 5 | right button down / up | `drnasEmitMouse(RIGHT, …)` |
-| 6 | vertical wheel, `value` in notches (fractional accumulates natively) | wheel buttons, pinch |
+| 6 | vertical wheel, `value` in notches (fractional accumulates natively) | integrated dock scroll rail, pinch |
 | 7 | touch gesture sensitivity (0.08 … 1.0) | SENS slider |
 | 8 / 9 | **middle button down / up** (new) | `drnasEmitMouse(MIDDLE, …)`, orbit/pan |
-| 10 / 11 | **Shift hold on / off** (new) | pan gesture, nav PAN pad |
-| 12 | **horizontal wheel** (new) | horizontal wheel buttons |
+| 10 / 11 | **Shift hold on / off** (new) | pan gesture, two-finger navigation-puck drag |
+| 12 | **horizontal wheel** (new) | integrated dock scroll rail (sideways swipe) |
 
 Actions 8–12 exist only after `patch_native_touch_extra.py`. The overlay asks
 `nativeDrnasCapabilities()` which of them the running `libblender.so` supports and disables (with a
@@ -61,6 +61,23 @@ pan-versus-zoom from the geometry and, crucially, its two-finger scroll is what 
 file browser and panels scroll. Replacing that with an unconditional orbit would break panel
 scrolling in editors the overlay cannot reason about, so orbit is offered through the pad and the
 navigation widget instead. This is a deliberate scope decision, not an oversight.
+
+## Reimplemented touch-control hierarchy
+
+The mouse is one custom-drawn, single hit surface instead of detached per-button cards and four
+wheel keys. The upper 48 dp rail emits vertical wheel input with an upward/downward gesture and,
+when `DRNAS_CAP_HSCROLL` is present, horizontal wheel input with a sideways gesture. The lower
+three zones are LMB / MMB / RMB, each with independent press/release and double-tap latch/unlock
+state. Each touch zone remains at least 48 dp high; the dock state model tracks pointer ownership,
+cancel and lifecycle release. MMB is visibly disabled when the loaded native library lacks its
+capability. A physical mouse, native viewport and keyboard paths remain unchanged.
+
+Navigation is a separate compact, movable orientation puck: a tap chooses an axis view, a one-finger
+drag emits MMB orbit, and a two-finger drag emits Shift+MMB pan. Compact zoom-in, zoom-out and frame
+actions sit beside it. Standard view shortcuts are in a hidden-by-default expandable row rather than
+a permanent button wall. The Android-free `DrnasNavGestureTest` and `DrnasDockGestureTest` exercise
+the new interaction state machines; the Android views themselves still need CI compilation and
+actual-device touch/screenshot review.
 
 ## Coordinate model (`DrnasPointerMap`)
 

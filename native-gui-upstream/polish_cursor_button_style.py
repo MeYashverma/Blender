@@ -85,29 +85,9 @@ once('    gestureSettings.setText("Osjetljivost gesta");',
      '    gestureSettings.setText("Osjetljivost gesta");\n    drnasStyleKey(gestureSettings, false);')
 # Surface radius and hairline are defined centrally by DrnasSkin.
 
-# Hiding zoom stops the spring and remeasures the shared dock. LMB/RMB retain
-# their listeners and their common split-touch window from the proven v4.
-once('    group.addView(zoom, new LinearLayout.LayoutParams(dpDrnas(170), dpDrnas(43)));', '''    final DrnasIconButton zoomToggle = new DrnasIconButton(this);
-    final boolean visibleZoom = drnasPrefs.getBoolean("zoom_visible", false);
-    zoomToggle.setText("");
-    zoomToggle.setDrnasIcon("zoom_in", DrnasSkin.ICON_MD);
-    zoomToggle.setContentDescription("Prikaži ili sakrij zoom slider");
-    drnasStyleKey(zoomToggle, false);
-    LinearLayout.LayoutParams toggleSize = new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(48));
-    toggleSize.setMargins(dpDrnas(1), 0, dpDrnas(1), 0);
-    group.addView(zoomToggle, toggleSize);
-    zoom.setVisibility(visibleZoom ? View.VISIBLE : View.GONE);
-    zoom.setProgressTintList(android.content.res.ColorStateList.valueOf(DrnasSkin.ACCENT));
-    zoom.setThumbTintList(android.content.res.ColorStateList.valueOf(DrnasSkin.ACCENT_BRIGHT));
-    group.addView(zoom, new LinearLayout.LayoutParams(dpDrnas(120), dpDrnas(48)));
-    zoomToggle.setOnClickListener(v -> {
-      drnasStopSpringZoom(); zoom.setProgress(50);
-      boolean show = zoom.getVisibility() != View.VISIBLE;
-      zoom.setVisibility(show ? View.VISIBLE : View.GONE);
-      zoomToggle.setContentDescription(show ? "Hide zoom controls" : "Show zoom controls");
-      drnasPrefs.edit().putBoolean("zoom_visible", show).apply();
-      drnasRefreshPanels();
-    });''')
+# Spring zoom remains callable by touchpad gestures; no extra slider or toggle is docked.
+once('    group.addView(zoom, new LinearLayout.LayoutParams(dpDrnas(170), dpDrnas(43)));', '''    drnasStyleSeekBar(zoom);
+    zoom.setVisibility(View.GONE);''')
 once('  private void requestAllFilesAccess() {', Path(__file__).with_name('drnas_button_skin.java.inc').read_text() + '\n  private void requestAllFilesAccess() {')
 p.write_text(s)
-print('PASS: adjustable smaller vector cursor, spaced larger mouse buttons, persisted zoom hide and refined button states')
+print('PASS: vector cursor styling and compact hidden spring-zoom slider; unified dock replaces legacy mouse cards')

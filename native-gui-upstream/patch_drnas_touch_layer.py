@@ -106,38 +106,27 @@ once(
     "touch layer insertion",
 )
 
-# ------------------------------------------------------------------ 4. dock: middle + wheel
-once(
-    '    for (String key : new String[] {"lmb", "rmb"}) {',
-    """    final java.util.ArrayList<String> dockKeys = new java.util.ArrayList<>();
-    dockKeys.add("lmb");
-    if (drnasHasCapability(DRNAS_CAP_MIDDLE)) {
-      dockKeys.add("mmb");
-    }
-    dockKeys.add("rmb");
-    for (String key : dockKeys) {""",
-    "dock button list",
-)
-once(
-    """      drnasDockedMouse.put(button, dock);
-    }
-  }""",
-    """      drnasDockedMouse.put(button, dock);
-    }
-    drnasDockExtraButtons(dock);
-  }""",
-    "dock extra buttons",
+# ------------------------------------------------------------------ 4. one integrated mouse + scroll surface
+cut(
+    "  private void drnasDockMouseButtons(LinearLayout dock) {",
+    "  private final java.util.Map<View, View> drnasDockedMouse =",
+    "replace detached mouse buttons with one touch surface",
+    load("drnas_mouse_dock_method.java.inc"),
 )
 
-# ------------------------------------------------------------------ 5. dock buttons + setup
+# ------------------------------------------------------------------ 5. setup input without constructing three floating button cards
 once(
-    """    drnasMouse("LMB", 2, 3, true, "lmb");
-    drnasMouse("RMB", 4, 5, false, "rmb");""",
-    """    drnasSetupTouch();
-    drnasMouse("LMB", 2, 3, true, "lmb");
-    drnasMouse("RMB", 4, 5, false, "rmb");
-    drnasMouse("MMB", 8, 9, false, "mmb");""",
-    "mouse button creation",
+    """    drnasMouse(\"LMB\", 2, 3, true, \"lmb\");
+    drnasMouse(\"RMB\", 4, 5, false, \"rmb\");""",
+    "    drnasSetupTouch();",
+    "mouse dock initialization",
+)
+
+# The earlier per-button views are superseded by DrnasMouseDockView. Remove their factory.
+cut(
+    "  private void drnasMouse(String label, int down, int up, boolean left, String key) {",
+    "  private void installDrnasControls() {",
+    "remove detached mouse button factory",
 )
 
 # ------------------------------------------------------------------ 5a. one-time visual migration keeps the new compact default
@@ -150,26 +139,6 @@ once(
           .putBoolean("visual_design_v1", true).apply();
     }''',
     "compact visual defaults",
-)
-
-# ------------------------------------------------------------------ 5b. semantic vector mouse targets
-once(
-    """  private void drnasMouse(String label, int down, int up, boolean left, String key) {
-    final TextView button = new TextView(this);
-    button.setText(label);
-    button.setTextSize(19);
-    button.setTextColor(Color.WHITE);
-    button.setGravity(Gravity.CENTER);
-    drnasStyleKey(button, true);""",
-    """  private void drnasMouse(String label, int down, int up, boolean left, String key) {
-    final DrnasIconTextView button = new DrnasIconTextView(this);
-    button.setText(\"\");
-    button.setContentDescription(label);
-    button.setDrnasIcon(key.equals(\"lmb\") ? DrnasIcons.LMB
-        : key.equals(\"mmb\") ? DrnasIcons.MMB : DrnasIcons.RMB,
-        DrnasSkin.ICON_LG, DrnasSkin.ICON, false);
-    drnasStyleKey(button, true);""",
-    "vector mouse buttons",
 )
 
 # ------------------------------------------------------------------ 6. physical mouse path
@@ -341,7 +310,15 @@ once(
     "drag persistence",
 )
 
-# ------------------------------------------------------------------ 13. validation
+# ------------------------------------------------------------------ 13. fit the unified dock as one resizable unit
+cut(
+    "  private void drnasMouseButtonSizes(int percent, boolean save) {",
+    "  private void drnasInstallMouseSizeOptions(",
+    "replace per-button sizing with integrated dock sizing",
+    load("drnas_mouse_button_sizes.java.inc"),
+)
+
+# ------------------------------------------------------------------ 14. validation
 result = s
 required = [
     ("DrnasGestureEngine", "gesture engine"),
@@ -351,15 +328,16 @@ required = [
     ("DrnasControlLayout", "layout model"),
     ("DrnasSkin", "shared visual tokens"),
     ("DrnasIconTextView", "vector mouse controls"),
-    ("DrnasOrientationGizmo", "XYZ orientation gizmo"),
+    ("DrnasOrientationGizmo", "orientation puck"),
+    ("setOnOrbitListener", "native orbit/pan interaction"),
     ("drnasRegisterSkinGroup", "idle opacity state"),
     ("private native int nativeDrnasCapabilities();", "capability declaration"),
     ("drnasSetInputMode(", "mode switching"),
     ("installDrnasNavWidget(", "navigation widget"),
     ("installDrnasLayoutOptions(", "layout presets"),
     ("drnasReleaseTouchInput(", "input release"),
-    ('dockKeys.add("mmb")', "middle button in the dock"),
-    ("drnasHasCapability(DRNAS_CAP_MIDDLE)", "middle button capability gate"),
+    ("DrnasMouseDockView", "integrated mouse and scroll dock"),
+    ("drnasMouseDockView.setMiddleAvailable", "middle button capability gate"),
 ]
 for needle, what in required:
     if needle not in result:
@@ -400,6 +378,9 @@ shipped = [
     "DrnasIconTextView.java",
     "DrnasIconButton.java",
     "DrnasOrientationGizmo.java",
+    "DrnasMouseDockView.java",
+    "DrnasDockGesture.java",
+    "DrnasNavGesture.java",
 ]
 for name in shipped:
     source = patch_dir / name

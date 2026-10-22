@@ -81,14 +81,7 @@
       public void onStopTrackingTouch(SeekBar b) {}
     });
     options.addView(drnasUiLabel("Miš: tap = lijevi klik • 2 prsta = zoom / desni tap"));
-    if (drnasHasCapability(DRNAS_CAP_HSCROLL)) {
-      options.addView(drnasUiLabel("Horizontal scroll"));
-      final LinearLayout horizontalWheel = new LinearLayout(this);
-      horizontalWheel.setOrientation(LinearLayout.HORIZONTAL);
-      drnasDockWheelButton(horizontalWheel, "Scroll left", 12, -1f, "hleft");
-      drnasDockWheelButton(horizontalWheel, "Scroll right", 12, 1f, "hright");
-      options.addView(horizontalWheel, new LinearLayout.LayoutParams(-2, dpDrnas(52)));
-    }
+
   }
 
   private void drnasRefreshMouseLayer() {

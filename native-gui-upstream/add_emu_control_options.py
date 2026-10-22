@@ -52,16 +52,16 @@ once('      button.setTextSize(10.5f * factor);', '      button.setTextSize(13f 
 # Shared DrnasSkin/DrnasChrome tokens replace the previous gradient and per-key background.
 once('    options.addView(drnasUiLabel("EDIT: pomakni panel prstom, DONE: spremi položaj"));',
      '    installDrnasMouseOptions(options);\n    options.addView(drnasUiLabel("EDIT: pomakni panel prstom, DONE: spremi položaj"));')
-# Match the EMU mouse dock: one movable grip + LMB + RMB + zoom block.
+# Replace the old card row with a movable grip and the unified three-zone scroll dock.
 once('    group.setOrientation(LinearLayout.VERTICAL);', '    group.setOrientation(LinearLayout.HORIZONTAL);')
 once('    heading.setText("ZOOM / MOVE");', '''    heading.setText("");
     if (heading instanceof DrnasIconTextView) {
       ((DrnasIconTextView)heading).setDrnasIcon("grip", DrnasSkin.ICON_MD, DrnasSkin.ICON_SECONDARY, false);
     }''')
 once('    group.setBackgroundColor(Color.argb(220, 22, 52, 73));',
-     '    group.setBackground(drnasPill(Color.argb(155, 16, 24, 37)));')
+     '    group.setBackgroundColor(Color.TRANSPARENT);')
 once('    group.addView(heading, new LinearLayout.LayoutParams(-1, dpDrnas(26)));',
-     '    group.addView(heading, new LinearLayout.LayoutParams(dpDrnas(30), dpDrnas(48)));\n    drnasDockMouseButtons(group);')
+     '    group.addView(heading, new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(116)));\n    drnasDockMouseButtons(group);')
 once('    drnasPosition(group, "zoom", true, 115, 96, 190, 80);', '''    drnasPosition(group, "zoom", true, 12, 18, 340, 80);
     drnasPanels.get(group).anchor.height = ViewGroup.LayoutParams.WRAP_CONTENT;
     drnasPanels.get(group).anchor.width = ViewGroup.LayoutParams.WRAP_CONTENT;

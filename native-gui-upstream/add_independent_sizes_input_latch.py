@@ -21,7 +21,7 @@ once('VELIČINA TIPKI • kotačić / – +', 'VELIČINA TIPKOVNICE I NAREDBI')
 once('    installDrnasMouseOptions(optionRows);', '    drnasInstallMouseSizeOptions(optionRows);\n    installDrnasMouseOptions(optionRows);')
 once('    drnasPosition(group, "zoom", true, 12, 18, 340, 80);', '''    drnasMouseDock = group; drnasDockGrip = heading;
     drnasRegisterSkinGroup(group);
-    drnasDockZoomToggle = zoomToggle; drnasDockZoomSlider = zoom;
+    drnasDockZoomToggle = null; drnasDockZoomSlider = null;
     group.setClipChildren(false); group.setClipToPadding(false);
     drnasPosition(group, "zoom", true, 12, 18, 340, 80);''')
 once('    drnasSendInput(7, 0f, 0f, 0.08f + 0.0092f * init);', '''    drnasSendInput(7, 0f, 0f, 0.08f + 0.0092f * init);

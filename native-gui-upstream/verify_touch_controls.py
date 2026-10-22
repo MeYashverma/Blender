@@ -93,18 +93,33 @@ for signature in [
     count = activity.count(signature)
     check(count == 1, f"{signature!r} must be declared exactly once, found {count}")
 
-# ---------------------------------------------------------------- 3. mouse dock completeness
-for label, action in [("LMB", 2), ("RMB", 4), ("MMB", 8)]:
-    check(f'drnasMouse("{label}", {action}, {action + 1}' in activity,
-          f"{label} must drive native action {action}/{action + 1}")
-check('dockKeys.add("mmb")' in activity, "the dock must host the middle button")
-check("drnasHasCapability(DRNAS_CAP_MIDDLE)) {\n      dockKeys.add" in activity,
-      "the middle button must only appear when the native library supports it")
-check("drnasDockExtraButtons(dock);" in activity, "the dock must add wheel buttons")
-check('drnasDockWheelButton(dock, "Scroll up", 6, 1f' in activity,
-      "wheel up must send a real wheel event")
-check('drnasDockWheelButton(dock, "Scroll down", 6, -1f' in activity,
-      "wheel down must send a real wheel event")
+# ---------------------------------------------------------------- 3. integrated mouse dock completeness
+check("DrnasMouseDockView drnasMouseDockView" in activity,
+      "one coherent mouse-and-scroll touch surface must be installed")
+check("new DrnasMouseDockView(this)" in activity,
+      "the dock must be a single shared component, not detached button cards")
+check("drnasMouseDockView.setMiddleAvailable(drnasHasCapability(DRNAS_CAP_MIDDLE))" in activity,
+      "middle input must be capability-gated")
+check("drnasMouseDockView.setHorizontalAvailable(drnasHasCapability(DRNAS_CAP_HSCROLL))" in activity,
+      "horizontal scroll must be capability-gated")
+check("drnasMouseButtons.press(bit)" in activity and "drnasMouseButtons.release(bit)" in activity,
+      "the dock must emit real independent button press/release events")
+check("drnasSendInput(6, 0f, 0f, vertical)" in activity
+      and "drnasSendInput(12, 0f, 0f, horizontal)" in activity,
+      "the dock scroll lane must emit vertical and horizontal wheel events")
+mouse_dock_source = read(patch_dir / "DrnasMouseDockView.java")
+check("DrnasDockGesture" in mouse_dock_source and "Double tap to latch" in mouse_dock_source,
+      "the dock must expose tested double-tap latch/unlock semantics")
+nav_gesture_source = read(patch_dir / "DrnasNavGesture.java")
+orientation_source = read(patch_dir / "DrnasOrientationGizmo.java")
+check("setOnOrbitListener" in activity and "DrnasNavGesture" in orientation_source
+      and "pointerCountChanged" in nav_gesture_source,
+      "the orientation puck must provide tested orbit and two-finger pan gestures")
+check('drnasNavButton(navRow, "ORBIT"' not in activity
+      and 'drnasNavButton(navRow, "PAN"' not in activity,
+      "the old ORBIT/PAN text-button row must be removed")
+check("drnasCompactNavAction" in activity and "nav_views_visible" in activity,
+      "compact zoom/frame actions and collapsible contextual view shortcuts must remain")
 
 # ---------------------------------------------------------------- 4. Java <-> native contract
 java_actions = set()
@@ -212,8 +227,12 @@ logic_classes = sorted(p.name for p in patch_dir.glob("Drnas*.java")
                                           "DrnasInitLog.java", "DrnasLanguage.java",
                                           "DrnasGpuPolicy.java", "DrnasChrome.java", "DrnasSkin.java", "DrnasIcons.java",
                                           "DrnasIconButton.java", "DrnasIconTextView.java",
-                                          "DrnasOrientationGizmo.java"})
+                                          "DrnasOrientationGizmo.java", "DrnasMouseDockView.java"})
 test_names = {p.name for p in patch_dir.glob("*Test.java")}
+runner = read(patch_dir / "run_input_tests.sh")
+check("DrnasDockGesture" in runner and "DrnasDockGestureTest" in runner
+      and "DrnasNavGesture" in runner and "DrnasNavGestureTest" in runner,
+      "the new mouse-dock and navigation state tests must run in the JVM suite")
 check("DrnasVisualDesignTest.java" in test_names,
       "the shared Blender-dark palette and icon contract need a design-system test")
 for source in logic_classes:

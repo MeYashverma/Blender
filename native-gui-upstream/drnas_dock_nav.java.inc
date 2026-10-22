@@ -88,99 +88,7 @@
   /* ------------------------------------------------------------------ mouse dock */
 
   /** Wheel up/down (and horizontal) buttons: real wheel events, repeat while held. */
-  private void drnasDockWheelButton(LinearLayout dock, String label, final int action,
-                                    final float amount, final String key) {
-    final DrnasIconTextView button = new DrnasIconTextView(this);
-    button.setText("");
-    button.setContentDescription(label);
-    final String icon = key.equals("wheelup") ? "wheel_up"
-        : key.equals("wheeldown") ? "wheel_down"
-        : key.equals("hleft") ? "wheel_left" : "wheel_right";
-    button.setDrnasIcon(icon, DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
-    drnasStyleKey(button, false);
-    final LinearLayout.LayoutParams size =
-        new LinearLayout.LayoutParams(dpDrnas(DrnasSkin.TOUCH_MIN), dpDrnas(DrnasSkin.TOUCH_MIN));
-    size.setMargins(dpDrnas(0), dpDrnas(2), dpDrnas(0), dpDrnas(2));
-    dock.addView(button, size);
-    drnasResizeTargets.put(key, button);
-    button.setOnTouchListener((v, event) -> {
-      if (drnasEdit) {
-        return true;
-      }
-      switch (event.getActionMasked()) {
-        case MotionEvent.ACTION_DOWN:
-          drnasWakeSkin();
-          v.setActivated(true);
-          drnasHaptic(v);
-          drnasSendInput(action, 0f, 0f, amount);
-          drnasStartRepeat(() -> drnasSendInput(action, 0f, 0f, amount));
-          return true;
-        case MotionEvent.ACTION_UP:
-        case MotionEvent.ACTION_CANCEL:
-          v.setActivated(false);
-          drnasStopRepeat();
-          return true;
-        default:
-          return true;
-      }
-    });
-  }
-
-  /** Called from drnasDockMouseButtons once the LMB/RMB/MMB widgets are in place. */
-  private void drnasDockExtraButtons(LinearLayout dock) {
-    drnasDockWheelButton(dock, "Scroll up", 6, 1f, "wheelup");
-    drnasDockWheelButton(dock, "Scroll down", 6, -1f, "wheeldown");
-  }
-
   /* ------------------------------------------------------------------ navigation widget */
-
-  private void drnasBindNavDrag(TextView view, final boolean pan) {
-    view.setOnTouchListener((v, event) -> {
-      switch (event.getActionMasked()) {
-        case MotionEvent.ACTION_DOWN:
-          drnasWakeSkin();
-          if (drnasMouseButtons == null) {
-            return true;
-          }
-          drnasSyncPointerGeometry();
-          drnasNavLastX = event.getX();
-          drnasNavLastY = event.getY();
-          if (pan) {
-            if (!drnasHasCapability(DRNAS_CAP_SHIFT)) {
-              return true;
-            }
-            drnasSendInput(10, 0f, 0f, 1f);
-          }
-          drnasMouseButtons.press(DrnasMouseState.MIDDLE);
-          v.setActivated(true);
-          return true;
-        case MotionEvent.ACTION_MOVE: {
-          final float dx = event.getX() - drnasNavLastX;
-          final float dy = event.getY() - drnasNavLastY;
-          drnasNavLastX = event.getX();
-          drnasNavLastY = event.getY();
-          drnasPointerX = Math.max(0f, Math.min(drnasMap.maxNativeX(),
-              drnasPointerX + dx * drnasNavSpeed));
-          drnasPointerY = Math.max(0f, Math.min(drnasMap.maxNativeY(),
-              drnasPointerY + dy * drnasNavSpeed));
-          drnasSendInput(1, drnasPointerX, drnasPointerY, 0f);
-          return true;
-        }
-        case MotionEvent.ACTION_UP:
-        case MotionEvent.ACTION_CANCEL:
-          if (drnasMouseButtons != null) {
-            drnasMouseButtons.release(DrnasMouseState.MIDDLE);
-          }
-          if (pan) {
-            drnasSendInput(11, 0f, 0f, 0f);
-          }
-          v.setActivated(false);
-          return true;
-        default:
-          return true;
-      }
-    });
-  }
 
   private TextView drnasNavButton(LinearLayout row, String label, int widthDp) {
     final DrnasIconTextView button = new DrnasIconTextView(this);
@@ -188,9 +96,8 @@
     button.setTextSize(10f);
     button.setTextColor(DrnasSkin.TEXT_SECONDARY);
     drnasStyleKey(button, false);
-    final String icon = label.equals("ORBIT") ? "orbit"
-        : label.equals("PAN") ? "pan" : label.equals("Frame") ? "frame"
-        : label.equals("All") ? "frame_all" : label.equals("Front") ? "view_front"
+    final String icon = label.equals("Frame all") ? "frame_all"
+        : label.equals("Frame") ? "frame" : label.equals("All") ? "frame_all" : label.equals("Front") ? "view_front"
         : label.equals("Back") ? "view_back" : label.equals("Left") ? "view_left"
         : label.equals("Right") ? "view_right" : label.equals("Top") ? "view_top"
         : label.equals("Bottom") ? "view_bottom" : label.equals("Persp/Ortho") ? "ortho"
@@ -276,119 +183,157 @@
     }
   }
 
+  private DrnasIconTextView drnasCompactNavAction(LinearLayout row, String icon, String description,
+                                                  Runnable action) {
+    final DrnasIconTextView button = new DrnasIconTextView(this);
+    button.setText("");
+    button.setDrnasIcon(icon, DrnasSkin.ICON_MD, DrnasSkin.ICON_SECONDARY, false);
+    button.setContentDescription(description);
+    drnasStyleKey(button, false);
+    row.addView(button, new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(48)));
+    button.setOnClickListener(v -> {
+      drnasWakeSkin();
+      drnasHaptic(v);
+      action.run();
+    });
+    return button;
+  }
+
+  /** Compact orientation puck: drag to orbit, two-finger drag to pan, tap axes for views. */
   private void installDrnasNavWidget() {
     final LinearLayout root = new LinearLayout(this);
     root.setOrientation(LinearLayout.VERTICAL);
-    root.setBackground(drnasPill(Color.argb(238, 15, 32, 49)));
-    root.setPadding(dpDrnas(3), dpDrnas(2), dpDrnas(3), dpDrnas(2));
+    root.setPadding(dpDrnas(4), dpDrnas(4), dpDrnas(4), dpDrnas(4));
+    root.setBackground(drnasPill(DrnasSkin.SURFACE));
+    root.setClipChildren(false);
+    root.setClipToPadding(false);
 
-    final LinearLayout header = new LinearLayout(this);
-    header.setGravity(Gravity.CENTER_VERTICAL);
+    final LinearLayout controls = new LinearLayout(this);
+    controls.setOrientation(LinearLayout.HORIZONTAL);
+    controls.setGravity(Gravity.CENTER_VERTICAL);
     final DrnasIconTextView grip = new DrnasIconTextView(this);
-    grip.setText("NAV"); grip.setTextSize(9f); grip.setTextColor(DrnasSkin.TEXT_SECONDARY);
-    grip.setDrnasIcon("nav", DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, true);
-    grip.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
-        "Drag to move the navigation widget", "Povuci za premjestanje navigacije"));
-    header.addView(grip, new LinearLayout.LayoutParams(dpDrnas(58), dpDrnas(38)));
-    final DrnasIconTextView fold = new DrnasIconTextView(this);
-    fold.setDrnasIcon("chevron_down", DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
-    fold.setContentDescription("Expand or minimize navigation");
-    header.addView(fold, new LinearLayout.LayoutParams(dpDrnas(44), dpDrnas(44)));
-    final DrnasIconTextView viewsToggle = new DrnasIconTextView(this);
-    viewsToggle.setDrnasIcon("view_eye", DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
-    viewsToggle.setContentDescription("Show view directions");
-    header.addView(viewsToggle, new LinearLayout.LayoutParams(dpDrnas(44), dpDrnas(44)));
-    root.addView(header, new LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.WRAP_CONTENT, dpDrnas(44)));
+    grip.setText("");
+    grip.setDrnasIcon("grip", DrnasSkin.ICON_MD, DrnasSkin.ICON_SECONDARY, false);
+    grip.setContentDescription("Move navigation controls");
+    drnasStyleKey(grip, false);
+    controls.addView(grip, new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(88)));
 
-    final LinearLayout body = new LinearLayout(this);
-    body.setOrientation(LinearLayout.VERTICAL);
-    final LinearLayout navRow = new LinearLayout(this);
-    navRow.setGravity(Gravity.CENTER_VERTICAL);
-    final TextView orbit = drnasNavButton(navRow, "ORBIT", 66);
-    drnasBindNavDrag(orbit, false);
-    final TextView pan = drnasNavButton(navRow, "PAN", 56);
-    drnasBindNavDrag(pan, true);
     final DrnasOrientationGizmo orientation = new DrnasOrientationGizmo(this);
     orientation.setContentDescription(DrnasLanguage.text(BlenderActivity.this,
-        "View orientation. Touch a coloured axis to choose a view.",
-        "Smjer pogleda. Dodirni obojenu os za odabir pogleda."));
+        "View orientation. Tap an axis for a standard view; drag to orbit; two-finger drag to pan.",
+        "Smjer pogleda. Dodirni os za standardni pogled; povuci za orbitu; dva prsta za pomak."));
     orientation.setOnDirectionListener((key, meta) -> {
       if (drnasTyping()) {
         drnasFlashDisabled(orientation, DrnasLanguage.text(BlenderActivity.this,
             "blocked while typing", "blokirano tijekom tipkanja"));
       } else {
+        drnasWakeSkin();
         drnasTap(key, meta);
       }
     });
-    navRow.addView(orientation, new LinearLayout.LayoutParams(dpDrnas(68), dpDrnas(68)));
-    final TextView zoomOut = drnasNavButton(navRow, "−", 44);
-    zoomOut.setOnClickListener(v -> drnasSendInput(6, 0f, 0f, -2f));
-    final TextView zoomIn = drnasNavButton(navRow, "+", 44);
-    zoomIn.setOnClickListener(v -> drnasSendInput(6, 0f, 0f, 2f));
-    body.addView(navRow);
+    orientation.setOnOrbitListener(new DrnasOrientationGizmo.OnOrbitListener() {
+      private boolean active;
+      private boolean panActive;
+
+      @Override public void begin(boolean pan) {
+        if (!drnasHasCapability(DRNAS_CAP_MIDDLE) || drnasMouseButtons == null) return;
+        if (pan && !drnasHasCapability(DRNAS_CAP_SHIFT)) return;
+        if (drnasMouseButtons.isHeld(DrnasMouseState.MIDDLE)) return;
+        drnasWakeSkin();
+        drnasSyncPointerGeometry();
+        if (pan) drnasSendInput(10, 0f, 0f, 1f);
+        if (!drnasMouseButtons.press(DrnasMouseState.MIDDLE)) {
+          if (pan) drnasSendInput(11, 0f, 0f, 0f);
+          return;
+        }
+        active = true;
+        panActive = pan;
+      }
+
+      @Override public void move(float dx, float dy, boolean pan) {
+        if (!active) return;
+        drnasPointerX = Math.max(0f, Math.min(drnasMap.maxNativeX(),
+            drnasPointerX + dx * drnasNavSpeed));
+        drnasPointerY = Math.max(0f, Math.min(drnasMap.maxNativeY(),
+            drnasPointerY + dy * drnasNavSpeed));
+        drnasSendInput(1, drnasPointerX, drnasPointerY, 0f);
+      }
+
+      @Override public void end(boolean pan) {
+        if (!active) return;
+        if (drnasMouseButtons != null) drnasMouseButtons.release(DrnasMouseState.MIDDLE);
+        if (panActive) drnasSendInput(11, 0f, 0f, 0f);
+        active = false;
+        panActive = false;
+      }
+    });
+    controls.addView(orientation, new LinearLayout.LayoutParams(dpDrnas(76), dpDrnas(76)));
+
+    final LinearLayout actions = new LinearLayout(this);
+    actions.setOrientation(LinearLayout.VERTICAL);
+    final LinearLayout upper = new LinearLayout(this);
+    upper.setOrientation(LinearLayout.HORIZONTAL);
+    drnasCompactNavAction(upper, "zoom_out", "Zoom out", () -> drnasSendInput(6, 0f, 0f, -2f));
+    drnasCompactNavAction(upper, "zoom_in", "Zoom in", () -> drnasSendInput(6, 0f, 0f, 2f));
+    final LinearLayout lower = new LinearLayout(this);
+    lower.setOrientation(LinearLayout.HORIZONTAL);
+    final DrnasIconTextView frame = drnasCompactNavAction(lower, "frame", "Frame selected", () -> {
+      if (drnasHasCapability(DRNAS_CAP_KEYS)) drnasTap(android.view.KeyEvent.KEYCODE_NUMPAD_DOT, 0);
+    });
+    final boolean keySupport = drnasHasCapability(DRNAS_CAP_KEYS);
+    frame.setEnabled(keySupport);
+    frame.setAlpha(keySupport ? DrnasSkin.ALPHA_ACTIVE : DrnasSkin.ALPHA_DISABLED);
+    frame.setContentDescription(keySupport ? "Frame selected" : "Frame selected: native key input unavailable");
+    final DrnasIconTextView viewsToggle = new DrnasIconTextView(this);
+    viewsToggle.setText("");
+    viewsToggle.setDrnasIcon("view_eye", DrnasSkin.ICON_MD, DrnasSkin.ICON_SECONDARY, false);
+    viewsToggle.setContentDescription("Show or hide standard view shortcuts");
+    drnasStyleKey(viewsToggle, false);
+    lower.addView(viewsToggle, new LinearLayout.LayoutParams(dpDrnas(48), dpDrnas(48)));
+    actions.addView(upper);
+    actions.addView(lower);
+    controls.addView(actions, new LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    root.addView(controls, new LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
     final android.widget.HorizontalScrollView scroller =
         new android.widget.HorizontalScrollView(this);
     scroller.setHorizontalScrollBarEnabled(false);
-    final LinearLayout keyRow = new LinearLayout(this);
-    keyRow.setGravity(Gravity.CENTER_VERTICAL);
-    drnasNavKey(keyRow, "Frame", android.view.KeyEvent.KEYCODE_NUMPAD_DOT, 0);
-    drnasNavKey(keyRow, "All", android.view.KeyEvent.KEYCODE_MOVE_HOME, 0);
-    drnasNavKey(keyRow, "Front", android.view.KeyEvent.KEYCODE_NUMPAD_1, 0);
-    drnasNavKey(keyRow, "Right", android.view.KeyEvent.KEYCODE_NUMPAD_3, 0);
-    drnasNavKey(keyRow, "Top", android.view.KeyEvent.KEYCODE_NUMPAD_7, 0);
-    drnasNavKey(keyRow, "Back", android.view.KeyEvent.KEYCODE_NUMPAD_1,
+    final LinearLayout shortcuts = new LinearLayout(this);
+    shortcuts.setGravity(Gravity.CENTER_VERTICAL);
+    drnasNavKey(shortcuts, "Frame all", android.view.KeyEvent.KEYCODE_MOVE_HOME, 0);
+    drnasNavKey(shortcuts, "Front", android.view.KeyEvent.KEYCODE_NUMPAD_1, 0);
+    drnasNavKey(shortcuts, "Right", android.view.KeyEvent.KEYCODE_NUMPAD_3, 0);
+    drnasNavKey(shortcuts, "Top", android.view.KeyEvent.KEYCODE_NUMPAD_7, 0);
+    drnasNavKey(shortcuts, "Back", android.view.KeyEvent.KEYCODE_NUMPAD_1,
         android.view.KeyEvent.META_CTRL_ON);
-    drnasNavKey(keyRow, "Left", android.view.KeyEvent.KEYCODE_NUMPAD_3,
+    drnasNavKey(shortcuts, "Left", android.view.KeyEvent.KEYCODE_NUMPAD_3,
         android.view.KeyEvent.META_CTRL_ON);
-    drnasNavKey(keyRow, "Bottom", android.view.KeyEvent.KEYCODE_NUMPAD_7,
+    drnasNavKey(shortcuts, "Bottom", android.view.KeyEvent.KEYCODE_NUMPAD_7,
         android.view.KeyEvent.META_CTRL_ON);
-    drnasNavKey(keyRow, "Persp/Ortho", android.view.KeyEvent.KEYCODE_NUMPAD_5, 0);
-    drnasNavKey(keyRow, "User", android.view.KeyEvent.KEYCODE_NUMPAD_0, 0);
-    scroller.addView(keyRow, new android.widget.HorizontalScrollView.LayoutParams(
+    drnasNavKey(shortcuts, "Persp/Ortho", android.view.KeyEvent.KEYCODE_NUMPAD_5, 0);
+    scroller.addView(shortcuts, new android.widget.HorizontalScrollView.LayoutParams(
         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-    body.addView(scroller, new LinearLayout.LayoutParams(
-        Math.max(dpDrnas(200), Math.min(dpDrnas(430),
-            getResources().getDisplayMetrics().widthPixels - dpDrnas(40))),
-        ViewGroup.LayoutParams.WRAP_CONTENT));
-    final boolean directionsVisible = drnasPrefs.getBoolean("nav_views_visible", false);
-    scroller.setVisibility(directionsVisible ? View.VISIBLE : View.GONE);
-    viewsToggle.setActivated(directionsVisible);
+    scroller.setVisibility(drnasPrefs.getBoolean("nav_views_visible", false)
+        ? View.VISIBLE : View.GONE);
+    viewsToggle.setActivated(scroller.getVisibility() == View.VISIBLE);
     viewsToggle.setOnClickListener(v -> {
+      drnasWakeSkin();
+      drnasHaptic(v);
       final boolean show = scroller.getVisibility() != View.VISIBLE;
       scroller.setVisibility(show ? View.VISIBLE : View.GONE);
       viewsToggle.setActivated(show);
       drnasPrefs.edit().putBoolean("nav_views_visible", show).apply();
       drnasRefreshPanels();
     });
-
-    if (!drnasHasCapability(DRNAS_CAP_KEYS)) {
-      final TextView note = drnasUiLabel(DrnasLanguage.text(BlenderActivity.this,
-          "View keys need the native input update",
-          "Tipke pogleda traze native update unosa"));
-      note.setTextSize(10f);
-      body.addView(note);
-    }
-    root.addView(body);
-
-    final boolean expanded = drnasPrefs.getBoolean("nav_expanded", true);
-    body.setVisibility(expanded ? View.VISIBLE : View.GONE);
-    fold.setDrnasIcon(expanded ? "chevron_down" : "chevron_right",
-        DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
-    fold.setOnClickListener(v -> {
-      final boolean show = body.getVisibility() != View.VISIBLE;
-      body.setVisibility(show ? View.VISIBLE : View.GONE);
-      drnasSetMinimized(root, !show);
-      fold.setDrnasIcon(show ? "chevron_down" : "chevron_right",
-          DrnasSkin.ICON_SM, DrnasSkin.ICON_SECONDARY, false);
-      drnasPrefs.edit().putBoolean("nav_expanded", show).apply();
-      drnasRefreshPanels();
-    });
+    root.addView(scroller, new LinearLayout.LayoutParams(
+        Math.max(dpDrnas(220), Math.min(dpDrnas(390),
+            getResources().getDisplayMetrics().widthPixels - dpDrnas(48))),
+        ViewGroup.LayoutParams.WRAP_CONTENT));
 
     drnasNavBar = root;
     drnasRegisterSkinGroup(root);
-    drnasSetMinimized(root, !expanded);
     final FrameLayout.LayoutParams location = new FrameLayout.LayoutParams(
         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
         Gravity.TOP | Gravity.RIGHT);

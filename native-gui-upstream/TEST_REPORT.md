@@ -1,6 +1,14 @@
 # Test report — touch control layer
 
-Status: visual-redesign patch chain, source verifiers, Android-free JVM suite, patched Android Java compilation and ARM64 APK build **PASS in CI** (validation run 39769568381; APK build run 39769560464; packaged APK inspected/published by run 39781473949). The actual-app screenshot and physical-device behavior remain **unverified**; no device result is claimed.
+## Current reimplementation status (2026-10-22)
+
+The previously published control arrangement was explicitly rejected and is **superseded**. This branch now replaces the detached LMB/MMB/RMB cards and wheel-button row with one contiguous mouse dock (upper scroll rail, lower three-button zones, per-button double-tap latch), and replaces the ORBIT/PAN text row with a draggable orientation puck (drag to orbit, two fingers to pan), compact zoom/frame actions and an optional view-shortcut row.
+
+The complete pinned-upstream patch chain, `verify_alpha_1_0.py`, `verify_touch_controls.py`, Python syntax checks and a parser pass over the generated Activity and Java sources passed locally. This sandbox has no `javac`, Android SDK or device: the new Android-free JVM tests have **not yet run**, the reimplemented Activity has **not yet compiled or packaged**, and no actual-app screenshot/touch review exists. Visual acceptance is therefore **not passed**. The earlier CI/APK results documented below belong only to the rejected previous arrangement and do not validate this reimplementation.
+
+## Historical previous arrangement (rejected; not acceptance evidence)
+
+Status: the earlier visual-redesign patch chain, source verifiers, Android-free JVM suite, patched Android Java compilation and ARM64 APK build passed in CI (validation run 39769568381; APK build run 39769560464; packaged APK inspected/published by run 39781473949). Those results are historical only. The actual-app screenshot and physical-device behavior remain **unverified**; no device result is claimed.
 
 ## Visual redesign status (2026-10-22)
 

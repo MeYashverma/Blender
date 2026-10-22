@@ -85,7 +85,6 @@ labels = {
     "Veličina kursora: ": "Cursor size: ",
     "Veličina kursora od 40 do 150 posto": "Cursor size from 40 to 150 percent",
     "Osjetljivost gesta": "Gesture sensitivity",
-    "Prikaži ili sakrij zoom slider": "Show or hide zoom slider",
     "Prozirnost ": "Opacity ",
     "miša i zooma": "mouse and zoom",
     "tipkovnice": "keyboard",
@@ -108,8 +107,8 @@ labels = {
     "Zatvori postavke i vrati se Blenderu": "Close settings and return to Blender",
     "Ručkicom ⠿ pomakni kontrole; položaj se sprema automatski":
         "Drag controls using ⠿; position saves automatically",
-    "VELIČINA MIŠA I ZOOMA": "MOUSE AND ZOOM SIZE",
-    "% • LMB/RMB i zoom blok": "% • LMB/RMB and zoom",
+    "VELIČINA MIŠA I SCROLL DOCKA": "MOUSE AND SCROLL DOCK SIZE",
+    "% • LMB / MMB / RMB i scroll": "% • LMB / MMB / RMB and scroll",
     "Dvostruki dodir: zaključaj tipku • jedan dodir: otključaj":
         "Double-tap to lock; tap once to unlock",
     " — zaključano; dodirni za otključavanje": " — locked; tap to unlock",
@@ -157,9 +156,7 @@ for hr, en in labels.items():
             raise RuntimeError(f"Expected generated Activity literal: {hr!r}")
         continue
     s = s.replace(old, f'DrnasLanguage.text(BlenderActivity.this, "{en}", "{hr}")')
-# The mouse/zoom size footer and other labels may be string pieces inside
-# concatenations. Translate the *complete* Java string literal there.
-s = s.replace('"% • LMB/RMB i zoom blok"', 'DrnasLanguage.text(BlenderActivity.this, "% • LMB/RMB and zoom", "% • LMB/RMB i zoom blok")')
+# New mouse-dock labels are complete literals and were translated by the table above.
 # v10 includes multiple status/control messages not meaningful to native Blender
 # itself. These are Android-only.
 activity.write_text(s, encoding="utf-8")
