@@ -7,7 +7,7 @@ import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.View;
 
-/** One independent, accessible, Pojav-style mouse button in the floating controller. */
+/** One independent, accessible Blender mouse button in the floating controller. */
 public final class DrnasMouseButtonView extends View {
   private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final RectF bounds = new RectF();

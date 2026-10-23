@@ -105,6 +105,12 @@ for needle, what in [
 check("DrnasMouseSurfaceView(this)" in activity
       and "drnasMouseSurfaceView.setListener" in activity,
       "the native overlay must install the touchpad and its input listener")
+check('"mouse_controller_v2"' in activity
+      and '.putBoolean("relative_mouse", true).putInt("input_mode", 1)' in activity,
+      "first-run migration must reset radial positions and start with a visible relative pointer")
+check('drnasEnableDrag(grip, dock, "zoom")' in activity
+      and "drnasDockGrip.setVisibility(drnasEdit ? View.VISIBLE : View.GONE)" in activity,
+      "the whole mouse controller must move by an edit-only grip")
 check("new DrnasMouseButtonView(" in activity
       and "DrnasMouseState.LEFT" in activity
       and "DrnasMouseState.MIDDLE" in activity

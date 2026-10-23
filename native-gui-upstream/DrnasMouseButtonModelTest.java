@@ -62,6 +62,6 @@ public final class DrnasMouseButtonModelTest {
         "unsupported MMB is not accepted");
     check(events.isEmpty(), "unsupported button emits nothing");
 
-    System.out.println("PASS: Pojav-style mouse buttons, ownership, double-tap latch and cancel release");
+    System.out.println("PASS: mouse-button ownership, double-tap latch and cancel release");
   }
 }
