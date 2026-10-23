@@ -67,7 +67,4 @@
     dock.addView(drnasMouseButtonRow,
         new LinearLayout.LayoutParams(dpDrnas(220), dpDrnas(58)));
     drnasDockedMouse.put(drnasMouseButtonRow, dock);
-    drnasResizeTargets.put("lmb", drnasMouseButtonViews.get(0));
-    drnasResizeTargets.put("mmb", drnasMouseButtonViews.get(1));
-    drnasResizeTargets.put("rmb", drnasMouseButtonViews.get(2));
   }
