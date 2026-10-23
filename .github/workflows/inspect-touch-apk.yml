@@ -1,0 +1,171 @@
+name: Inspect / publish a touch-test APK
+
+# The build artifacts live on blob storage that not every client can read. This job re-downloads a
+# finished APK inside CI, verifies it, and reports the facts (checksum, size, identity, exported
+# JNI entrypoints, shipped classes) as a comment on the pull request - and optionally attaches the
+# APK to a prerelease so it can be installed directly.
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-touch-apk.yml'
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run id of a successful "DRNAS touch controls - ARM64 APK" build (empty: newest)'
+        required: false
+      publish:
+        description: 'Attach the APK to the touch-test prerelease'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Check out the patches
+        uses: actions/checkout@v4
+
+      - name: Resolve the APK run
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          run_id="${{ inputs.run_id }}"
+          if [ -z "$run_id" ]; then
+            # workflow_dispatch inputs are empty on a push trigger: use the newest successful build.
+            run_id=$(gh run list --workflow=native-apk-touch-test.yml --status success \
+              --limit 1 --json databaseId -q '.[0].databaseId')
+          fi
+          test -n "$run_id"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "using run $run_id"
+
+      - name: Fetch the APK artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euxo pipefail
+          RUN_ID="${{ steps.pick.outputs.run_id }}"
+          mkdir -p apk
+          gh run download "$RUN_ID" -n "DRNAS-Touch-TEST-$RUN_ID" -D apk
+          ls -l apk
+          test -s apk/DRNAS-Native-Blender-Touch-TEST-arm64.apk
+          (cd apk && sha256sum -c SHA256SUMS.txt)
+
+      - name: Verify the APK contents
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          set +e
+          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends binutils unzip file
+          APK=apk/DRNAS-Native-Blender-Touch-TEST-arm64.apk
+          BT="$ANDROID_HOME/build-tools/35.0.1"
+          if [ ! -x "$BT/aapt" ]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;35.0.1' >/dev/null 2>&1
+          fi
+          {
+            echo "size:     $(du -h "$APK" | cut -f1)"
+            echo "sha256:   $(sha256sum "$APK" | cut -d' ' -f1)"
+            echo "signed:   $("$BT/apksigner" verify "$APK" >/dev/null 2>&1 && echo yes || echo no)"
+            echo "identity: $("$BT/aapt" dump badging "$APK" 2>/dev/null | sed -n '1p')"
+            echo "so files:"
+            unzip -Z1 "$APK" 2>/dev/null | grep -E '^lib/arm64-v8a/.*\.so$' | sed 's/^/  /'
+            unzip -p "$APK" lib/arm64-v8a/libblender.so > /tmp/libblender.so 2>/dev/null
+            file /tmp/libblender.so | sed 's/^/lib: /'
+            echo "input bridge symbols:"
+            readelf -Ws /tmp/libblender.so 2>/dev/null \
+              | grep -E 'nativeOnDrnasInput|nativeDrnasCapabilities|nativeOnCommitText|nativeOnKey' \
+              | awk '{print "  " $8}' | sort -u
+            unzip -p "$APK" classes.dex > /tmp/classes.dex 2>/dev/null
+            echo "input classes in dex:"
+            # DEX stores type descriptors, not bare names: Lorg/blender/blender/Drnas...;
+            strings /tmp/classes.dex 2>/dev/null \
+              | grep -oE 'Lorg/blender/blender/Drnas[A-Za-z]+;' | sort -u | sed 's/^/  /'
+          } > /tmp/report.txt 2>&1
+          cat /tmp/report.txt
+          cp /tmp/report.txt apk/APK-VERIFICATION.txt
+          # Gate only on what actually matters for installing and testing it.
+          grep -q 'libblender.so' /tmp/report.txt || { echo "::error title=APK::no libblender.so in the APK"; exit 1; }
+          grep -q 'nativeOnDrnasInput' /tmp/report.txt || { echo "::error title=APK::the input bridge is missing from libblender.so"; exit 1; }
+          grep -q 'DrnasGestureEngine' /tmp/report.txt || { echo "::error title=APK::the touch classes are missing from classes.dex"; exit 1; }
+          grep -q 'DrnasSkin' /tmp/report.txt || { echo "::error title=APK::the shared visual system is missing from classes.dex"; exit 1; }
+          grep -q 'DrnasIconTextView' /tmp/report.txt || { echo "::error title=APK::the vector mouse buttons are missing from classes.dex"; exit 1; }
+          grep -q 'DrnasOrientationGizmo' /tmp/report.txt || { echo "::error title=APK::the orientation gizmo is missing from classes.dex"; exit 1; }
+          echo "APK verified"
+
+      - name: Report on the pull request
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Touch-test APK from run ${{ steps.pick.outputs.run_id }}"
+            echo ""
+            echo '```'
+            cat /tmp/report.txt
+            echo '```'
+            echo ""
+            echo "Download: [run ${{ steps.pick.outputs.run_id }} artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ steps.pick.outputs.run_id }})"
+          } > /tmp/comment.md
+          # On failure /tmp/report.txt may not exist yet; always leave something readable behind.
+          if [ ! -s /tmp/report.txt ]; then
+            { echo "APK verification did not complete."; echo ""; echo "```"; ls -l apk 2>&1; echo "```"; } \
+              >> /tmp/comment.md
+          fi
+          gh api "repos/${{ github.repository }}/issues/1/comments" -F body=@/tmp/comment.md >/dev/null
+
+      - name: Attach to the touch-test prerelease
+        # Publish when explicitly dispatched with publish=true, or when the pushed commit asks for
+        # it. The tag is a prerelease and clearly labelled as a test build.
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish) || contains(github.event.head_commit.message, '[publish-apk]') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG=touch-test
+          FILES=(
+            apk/DRNAS-Native-Blender-Touch-TEST-arm64.apk
+            apk/SHA256SUMS.txt
+            apk/SOURCE-ATTRIBUTION.txt
+            apk/APK-VERIFICATION.txt
+          )
+          for f in "${FILES[@]}"; do test -s "$f"; done
+          NOTES=apk/RELEASE-NOTES.md
+          cat > "$NOTES" <<'EOF'
+          Test build of the DRNAS Native Blender touch control layer. This revision adds a compact
+          Blender-dark visual system, local vector mouse and shortcut icons, a centered MMB dock target,
+          a small XYZ orientation puck, collapsible shortcuts/navigation, consistent pressed/idle states,
+          and a rethemed settings surface. Input remains on Blender's existing native bridge.
+
+          Install notes: built from the pinned upstream commit with the deterministic patch chain. ARM64
+          only. It carries the same application id as Alpha 1.0, so if an Alpha 1.0 build with a different
+          signing key is already installed, uninstall it first (your projects in shared storage are not
+          affected).
+
+          This is a TEST build from a pull request branch, not an official PreAlpha/Alpha release. No
+          physical-device screenshot or touch test has been performed: the actual-app visual quality gate
+          remains open. Please install on a landscape phone, capture the Blender viewport with the controls
+          visible, and report issues. See TEST_REPORT.md for the remaining verification list.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+            gh release edit "$TAG" --title "DRNAS Touch TEST build" --prerelease --notes-file "$NOTES"
+          else
+            gh release create "$TAG" "${FILES[@]}" --target "$GITHUB_SHA" \
+              --title "DRNAS Touch TEST build" --prerelease --notes-file "$NOTES"
+          fi
+          gh release view "$TAG" --json url,assets -q '.url'
+          gh release view "$TAG" --json assets -q '.assets[] | "\(.name) \(.size)"'

@@ -1,0 +1,136 @@
+name: DRNAS touch controls - Java validation
+# Fast, hardware-free validation of the touch control layer.
+# Compiles the Android-free input tests AND the patched BlenderActivity against the real
+# android.jar, so a Java integration mistake fails here instead of on a device.
+
+on:
+  push:
+    branches: [arena/e8ebe2c9-blender, main, 'release/native-alpha-1.0']
+    paths:
+      - 'native-gui-upstream/**'
+      - '.github/workflows/native-touch-controls.yml'
+  pull_request:
+    paths:
+      - 'native-gui-upstream/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out the DRNAS patches
+        uses: actions/checkout@v4
+
+      - name: Check out the exact pinned upstream source
+        uses: actions/checkout@v4
+        with:
+          repository: simfeo/blender
+          ref: d93bd33cba768e19ee4387a31c0ea137ee2f0047
+          path: upstream
+          fetch-depth: 1
+          lfs: false
+          submodules: false
+          sparse-checkout: |
+            build_files/android
+            build_files/cmake
+            intern/ghost
+            source/blender/gpu/vulkan
+            source/blender/gpu/intern
+
+      - name: Verify the pinned upstream revision
+        run: test "$(git -C upstream rev-parse HEAD)" = d93bd33cba768e19ee4387a31c0ea137ee2f0047
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Apply the DRNAS patch chain
+        run: |
+          set -euxo pipefail
+          bash native-gui-upstream/apply_gpu_test_patches.sh upstream
+          python3 native-gui-upstream/add_control_group_editor.py upstream
+          python3 native-gui-upstream/fix_relative_ime_input.py upstream
+          python3 native-gui-upstream/fix_floating_stretch_v10.py upstream
+          python3 native-gui-upstream/patch_alpha_1_0_ui.py upstream
+          python3 native-gui-upstream/patch_native_touch_extra.py upstream
+          python3 native-gui-upstream/patch_drnas_touch_layer.py upstream
+
+      - name: Re-running the native patch must fail closed
+        run: |
+          set -euo pipefail
+          if python3 native-gui-upstream/patch_native_touch_extra.py upstream; then
+            echo "the patch chain must reject a second application" >&2
+            exit 1
+          fi
+          if python3 native-gui-upstream/patch_drnas_touch_layer.py upstream; then
+            echo "the touch layer patch must reject a second application" >&2
+            exit 1
+          fi
+
+      - name: Verify the Java/native input contract
+        run: python3 native-gui-upstream/verify_touch_controls.py upstream
+
+      - name: Run the Android-free input tests
+        run: |
+          set -o pipefail
+          mkdir -p build
+          bash native-gui-upstream/run_input_tests.sh build/tests-jvm 2>&1 | tee build/tests.log
+
+      # The runner logs live on blob storage, so surface every diagnostic as a check annotation too.
+      - name: Report build diagnostics
+        if: failure()
+        run: |
+          for f in build/tests.log build/javac.log; do
+            test -f "$f" || continue
+            grep -E 'error:|error$|warning:|Exception|FAIL|PASS:' "$f" | head -60 | sed 's/\r$//' | while read -r line; do
+              echo "::error title=${f}::$(printf '%s' "$line" | tr -d '%,' | cut -c1-400)"
+            done
+          done
+
+      - name: Compile the patched activity against android.jar
+        run: |
+          set -euxo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35'
+          ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar"
+          test -s "$ANDROID_JAR"
+          mkdir -p build/apk-classes
+          find upstream/build_files/android/apk/app/src/main/java -name '*.java' > build/java-sources.txt
+          wc -l build/java-sources.txt
+          if javac -Xlint:deprecation -source 17 -target 17 -cp "$ANDROID_JAR" \
+              -d build/apk-classes @build/java-sources.txt > build/javac.log 2>&1; then
+            cat build/javac.log
+          else
+            cat build/javac.log
+            {
+              echo '### Android Java compile diagnostics'
+              echo '```text'
+              grep -B2 -A5 -E 'error:|symbol:|location:|required:|found:' build/javac.log | head -100 || tail -50 build/javac.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            while IFS= read -r line; do
+              printf '::error title=javac diagnostic::%s\n' "$line"
+            done < <(grep -B2 -A5 -E 'error:|symbol:|location:|required:|found:' build/javac.log | head -100 || tail -50 build/javac.log)
+            exit 1
+          fi
+
+      - name: Upload the Java diagnostics for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drnas-java-diagnostics
+          path: build/javac.log
+          if-no-files-found: ignore
+
+      - name: Upload the compiled overlay for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: drnas-touch-classes
+          path: build/apk-classes
+          if-no-files-found: error

@@ -1,0 +1,443 @@
+name: DRNAS Native Blender ARM64 feasibility
+on:
+  push:
+    paths: [".github/workflows/native-blender-arm64.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-arm64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Android NDK and build tools
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build cmake
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.2.12479018"
+      - name: Compile and verify native Android ARM64 ELF
+        run: |
+          set -euxo pipefail
+          mkdir -p native-results
+          printf '#include <stdio.h>\nint main(void){puts("DRNAS Android ARM64");return 0;}\n' > native-results/smoke.c
+          "$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang" -fPIE -pie native-results/smoke.c -o native-results/smoke
+          file native-results/smoke
+          readelf -h native-results/smoke | tee native-results/header.txt
+          grep -q 'Machine:.*AArch64' native-results/header.txt
+      - name: Fetch official Blender source (no Git LFS assets)
+        run: |
+          set -euxo pipefail
+          GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch v4.5.4 https://github.com/blender/blender.git /tmp/blender-src
+          git -C /tmp/blender-src rev-parse HEAD
+      - name: Cross-compile JPEG for Android ARM64
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch 3.1.2 https://github.com/libjpeg-turbo/libjpeg-turbo.git /tmp/libjpeg-turbo
+          cmake -S /tmp/libjpeg-turbo -B /tmp/jpeg-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/android-deps \
+            -DENABLE_SHARED=OFF -DENABLE_STATIC=ON \
+            -DWITH_TURBOJPEG=OFF -DWITH_TOOLS=OFF -DWITH_TESTS=OFF -DWITH_SIMD=OFF
+          cmake --build /tmp/jpeg-build --parallel 4
+          cmake --install /tmp/jpeg-build
+          test -f /tmp/android-deps/include/jpeglib.h
+          test -f /tmp/android-deps/lib/libjpeg.a
+      - name: Cross-compile PNG for Android ARM64
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v1.6.44 https://github.com/pnggroup/libpng.git /tmp/libpng-src
+          cmake -S /tmp/libpng-src -B /tmp/png-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/android-deps \
+            -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_TESTS=OFF -DPNG_TOOLS=OFF \
+            -DPNG_EXECUTABLES=OFF -DPNG_HARDWARE_OPTIMIZATIONS=OFF
+          cmake --build /tmp/png-build --parallel 4
+          cmake --install /tmp/png-build
+          test -f /tmp/android-deps/include/png.h
+          test -f /tmp/android-deps/lib/libpng16.a
+      - name: Cross-compile Zstandard for Android ARM64
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v1.5.7 https://github.com/facebook/zstd.git /tmp/zstd-src
+          cmake -S /tmp/zstd-src/build/cmake -B /tmp/zstd-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/android-deps \
+            -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_STATIC=ON \
+            -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF
+          cmake --build /tmp/zstd-build --parallel 4
+          cmake --install /tmp/zstd-build
+          test -f /tmp/android-deps/include/zstd.h
+          test -f /tmp/android-deps/lib/libzstd.a
+      - name: Cross-compile libepoxy for Android ARM64
+        run: |
+          set -euxo pipefail
+          sudo apt-get install -y --no-install-recommends meson pkg-config python3-mako
+          git clone --depth 1 --branch 1.5.10 https://github.com/anholt/libepoxy.git /tmp/libepoxy-src
+          NDK="$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          cat > /tmp/android-arm64-meson.ini <<EOF
+          [binaries]
+          c = '$NDK/aarch64-linux-android26-clang'
+          cpp = '$NDK/aarch64-linux-android26-clang++'
+          ar = '$NDK/llvm-ar'
+          strip = '$NDK/llvm-strip'
+          pkg-config = '/usr/bin/pkg-config'
+          [host_machine]
+          system = 'android'
+          cpu_family = 'aarch64'
+          cpu = 'aarch64'
+          endian = 'little'
+          [properties]
+          needs_exe_wrapper = true
+          [built-in options]
+          default_library = 'static'
+          EOF
+          meson setup /tmp/epoxy-build /tmp/libepoxy-src \
+            --cross-file /tmp/android-arm64-meson.ini \
+            --prefix=/tmp/android-deps -Dtests=false -Degl=yes -Dglx=no -Dx11=false
+          meson compile -C /tmp/epoxy-build
+          meson install -C /tmp/epoxy-build
+          test -f /tmp/android-deps/include/epoxy/gl.h
+          test -f /tmp/android-deps/lib/libepoxy.a
+      - name: Cross-compile Brotli for Android ARM64
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v1.1.0 https://github.com/google/brotli.git /tmp/brotli-src
+          cmake -S /tmp/brotli-src -B /tmp/brotli-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/android-deps -DCMAKE_INSTALL_LIBDIR=lib \
+            -DBUILD_SHARED_LIBS=OFF -DBROTLI_DISABLE_TESTS=ON
+          cmake --build /tmp/brotli-build --parallel 4
+          cmake --install /tmp/brotli-build
+          test -f /tmp/android-deps/lib/libbrotlidec.a
+          test -f /tmp/android-deps/lib/libbrotlicommon.a
+      - name: Cross-compile FreeType for Android ARM64
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch VER-2-13-3 https://github.com/freetype/freetype.git /tmp/freetype-src
+          cmake -S /tmp/freetype-src -B /tmp/freetype-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/android-deps -DCMAKE_INSTALL_LIBDIR=lib \
+            -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DFT_DISABLE_BROTLI=OFF -DBROTLIDEC_INCLUDE_DIRS=/tmp/android-deps/include \
+            -DBROTLIDEC_LIBRARIES='/tmp/android-deps/lib/libbrotlidec.a;/tmp/android-deps/lib/libbrotlicommon.a' \
+            -DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_BZIP2=ON \
+            -DFT_DISABLE_PNG=ON -DFT_DISABLE_ZLIB=ON
+          cmake --build /tmp/freetype-build --parallel 4
+          cmake --install /tmp/freetype-build
+          test -f /tmp/android-deps/lib/libfreetype.a
+          test -f /tmp/android-deps/include/freetype2/ft2build.h
+      - name: Cross-compile Boost libraries required by OpenImageIO
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch boost-1.86.0 https://github.com/boostorg/boost.git /tmp/boost-src
+          git -C /tmp/boost-src submodule update --init --depth 1
+          cd /tmp/boost-src
+          ./bootstrap.sh --with-libraries=filesystem,thread
+          ./b2 headers
+          test -f boost/version.hpp
+          NDK_CLANG="$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang++"
+          test -x "$NDK_CLANG"
+          printf 'using clang : android : "%s" ;\n' "$NDK_CLANG" > android-arm64.jam
+          ./b2 --user-config=android-arm64.jam toolset=clang-android target-os=android architecture=arm address-model=64 link=static threading=multi variant=release --prefix=/tmp/android-deps install -j4
+          test -f /tmp/android-deps/include/boost/version.hpp
+          test -f /tmp/android-deps/lib/libboost_filesystem.a
+          test -f /tmp/android-deps/lib/libboost_thread.a
+      - name: Cross-compile TIFF for OpenImageIO
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v4.6.0 https://github.com/libsdl-org/libtiff.git /tmp/tiff-src
+          cmake -S /tmp/tiff-src -B /tmp/tiff-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/android-deps -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_PREFIX_PATH=/tmp/android-deps -DBUILD_SHARED_LIBS=OFF \
+            -Dtiff-tools=OFF -Dtiff-tests=OFF -Dtiff-docs=OFF \
+            -Djpeg=ON -Dzlib=ON -Dwebp=OFF -Dzstd=OFF -Dlzma=OFF
+          cmake --build /tmp/tiff-build --parallel 4
+          cmake --install /tmp/tiff-build
+          test -f /tmp/android-deps/lib/libtiff.a
+      - name: Cross-compile Imath and OpenEXR for OpenImageIO
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v3.2.3 https://github.com/AcademySoftwareFoundation/Imath.git /tmp/imath-src
+          cmake -S /tmp/imath-src -B /tmp/imath-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/android-deps -DCMAKE_INSTALL_LIBDIR=lib \
+            -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF
+          cmake --build /tmp/imath-build --parallel 4
+          cmake --install /tmp/imath-build
+          git clone --depth 1 --branch v3.2.4 https://github.com/AcademySoftwareFoundation/openexr.git /tmp/openexr-src
+          cmake -S /tmp/openexr-src -B /tmp/openexr-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/android-deps -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_PREFIX_PATH=/tmp/android-deps -DBUILD_SHARED_LIBS=OFF \
+            -DOPENEXR_BUILD_TOOLS=OFF -DOPENEXR_BUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF
+          cmake --build /tmp/openexr-build --parallel 4
+          cmake --install /tmp/openexr-build
+          test -f /tmp/android-deps/include/OpenEXR/ImfRgbaFile.h
+      - name: Cross-compile required OpenImageIO for Android ARM64
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v2.5.16.0 https://github.com/AcademySoftwareFoundation/OpenImageIO.git /tmp/oiio-src
+          # OpenImageIO 2.5 requests OpenEXR CONFIG; locate the actual staged config.
+          OPENEXR_CONFIG="$(find /tmp/android-deps -type f -name OpenEXRConfig.cmake -print -quit)"
+          IMATH_CONFIG="$(find /tmp/android-deps -type f -name ImathConfig.cmake -print -quit)"
+          test -n "$OPENEXR_CONFIG"
+          test -n "$IMATH_CONFIG"
+          OPENEXR_DIR="$(dirname "$OPENEXR_CONFIG")"
+          IMATH_DIR="$(dirname "$IMATH_CONFIG")"
+          echo "OpenEXR CMake config: $OPENEXR_DIR"
+          echo "Imath CMake config: $IMATH_DIR"
+                    # OIIO 2.5 uses Boost CONFIG with CMake >= 3.30.
+          # b2 provides the Android archives but not BoostConfig.cmake: bridge them explicitly.
+          test -f /tmp/android-deps/include/boost/version.hpp
+          test -f /tmp/android-deps/lib/libboost_thread.a
+          test -f /tmp/android-deps/lib/libboost_filesystem.a
+          mkdir -p /tmp/android-deps/lib/cmake/Boost-1.86.0
+          cat > /tmp/android-deps/lib/cmake/Boost-1.86.0/BoostConfig.cmake <<'BOOST_CONFIG'
+          set(Boost_FOUND TRUE)
+          set(Boost_VERSION 1.86.0)
+          set(Boost_VERSION_STRING 1.86.0)
+          set(Boost_INCLUDE_DIRS "/tmp/android-deps/include")
+          set(Boost_LIBRARY_DIRS "/tmp/android-deps/lib")
+          set(Boost_LIBRARIES Boost::thread Boost::filesystem)
+          foreach(component IN ITEMS thread filesystem)
+            if(NOT TARGET Boost::${component})
+              add_library(Boost::${component} STATIC IMPORTED)
+              set_target_properties(Boost::${component} PROPERTIES
+                IMPORTED_LOCATION "/tmp/android-deps/lib/libboost_${component}.a"
+                INTERFACE_INCLUDE_DIRECTORIES "/tmp/android-deps/include")
+            endif()
+            set(Boost_${component}_FOUND TRUE)
+          endforeach()
+          if(NOT TARGET Boost::boost)
+            add_library(Boost::boost INTERFACE IMPORTED)
+            set_target_properties(Boost::boost PROPERTIES
+              INTERFACE_INCLUDE_DIRECTORIES "/tmp/android-deps/include")
+          endif()
+          BOOST_CONFIG
+          cat > /tmp/android-deps/lib/cmake/Boost-1.86.0/BoostConfigVersion.cmake <<'BOOST_VERSION'
+          set(PACKAGE_VERSION "1.86.0")
+          if(PACKAGE_FIND_VERSION VERSION_LESS_EQUAL PACKAGE_VERSION)
+            set(PACKAGE_VERSION_COMPATIBLE TRUE)
+          endif()
+          if(PACKAGE_FIND_VERSION VERSION_EQUAL PACKAGE_VERSION)
+            set(PACKAGE_VERSION_EXACT TRUE)
+          endif()
+          BOOST_VERSION
+          test -f /tmp/android-deps/lib/libtiff.a
+          test -f /tmp/android-deps/include/tiff.h
+          test -f /tmp/android-deps/lib/libjpeg.a
+          test -f /tmp/android-deps/include/jpeglib.h
+                    cmake -S /tmp/oiio-src -B /tmp/oiio-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/android-deps -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_PREFIX_PATH=/tmp/android-deps -DBoost_ROOT=/tmp/android-deps -DBoost_DIR=/tmp/android-deps/lib/cmake/Boost-1.86.0 -DBoost_USE_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF \
+            -DOIIO_BUILD_TOOLS=OFF -DOIIO_BUILD_TESTS=OFF -DOIIO_BUILD_DOCS=OFF \
+            -DOIIO_BUILD_PYTHON=OFF -DUSE_PYTHON=OFF \
+            -DUSE_OPENEXR=ON -DUSE_TIFF=ON -DUSE_WEBP=OFF \
+            -DUSE_FFMPEG=OFF -DUSE_OPENCV=OFF -DUSE_QT=OFF \
+            -DUSE_PUGIXML=OFF -DUSE_LIBRAW=OFF \
+            -DJPEG_ROOT=/tmp/android-deps -DJPEG_INCLUDE_DIR=/tmp/android-deps/include -DJPEG_LIBRARY=/tmp/android-deps/lib/libjpeg.a -DPNG_ROOT=/tmp/android-deps -DTIFF_ROOT=/tmp/android-deps -DTIFF_INCLUDE_DIR=/tmp/android-deps/include -DTIFF_LIBRARY_RELEASE=/tmp/android-deps/lib/libtiff.a -DOpenEXR_ROOT=/tmp/android-deps -DOpenEXR_DIR="$OPENEXR_DIR" -DImath_DIR="$IMATH_DIR"
+          cmake --build /tmp/oiio-build --parallel 4
+          cmake --install /tmp/oiio-build
+          test -f /tmp/android-deps/include/OpenImageIO/imageio.h
+          test -f /tmp/android-deps/include/OpenImageIO/export.h
+          test -f /tmp/android-deps/lib/libOpenImageIO.a
+          test -f /tmp/android-deps/lib/libOpenImageIO_Util.a
+          find /tmp/android-deps/lib -name '*OpenImageIO*' -print
+      - name: Probe official Blender lite and headless CMake configuration
+        run: |
+          set -euxo pipefail
+          mkdir -p native-results
+          # Blender's FindOpenImageIO uses find_file(NO_DEFAULT_PATH), which
+          # gets re-rooted by the Android toolchain even for staged host paths.
+          # Seed the exact generated export.h before the find_file call.
+          test -f /tmp/android-deps/include/OpenImageIO/export.h
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("/tmp/blender-src/build_files/cmake/Modules/FindOpenImageIO.cmake")
+          s = p.read_text()
+          needle = 'find_file(_openimageio_export\n'
+          assert s.count(needle) == 1
+          s = s.replace(needle, 'set(_openimageio_export "/tmp/android-deps/include/OpenImageIO/export.h")\nfind_file(_openimageio_export\n', 1)
+          p.write_text(s)
+          PY
+          cmake -S /tmp/blender-src -B /tmp/blender-android -G Ninja \
+            -C /tmp/blender-src/build_files/cmake/config/blender_lite.cmake \
+            -C /tmp/blender-src/build_files/cmake/config/blender_headless.cmake \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+            -DWITH_LIBS_PRECOMPILED=OFF -DWITH_PYTHON=OFF \
+            -DJPEG_INCLUDE_DIR=/tmp/android-deps/include \
+            -DJPEG_LIBRARY=/tmp/android-deps/lib/libjpeg.a \
+            -DPNG_PNG_INCLUDE_DIR=/tmp/android-deps/include \
+            -DPNG_LIBRARY=/tmp/android-deps/lib/libpng16.a \
+            -DZSTD_INCLUDE_DIR=/tmp/android-deps/include \
+            -DZSTD_LIBRARY=/tmp/android-deps/lib/libzstd.a \
+            -DEpoxy_INCLUDE_DIR=/tmp/android-deps/include \
+            -DEpoxy_LIBRARY=/tmp/android-deps/lib/libepoxy.a \
+            -DFREETYPE_INCLUDE_DIR_freetype2=/tmp/android-deps/include/freetype2 \
+            -DFREETYPE_INCLUDE_DIR_ft2build=/tmp/android-deps/include/freetype2 \
+            -DFREETYPE_LIBRARY_RELEASE=/tmp/android-deps/lib/libfreetype.a \
+            -DWITH_CYCLES=OFF -DWITH_OPENIMAGEIO=ON \
+            -DOPENIMAGEIO_ROOT_DIR=/tmp/android-deps \
+            -DOPENIMAGEIO_INCLUDE_DIR=/tmp/android-deps/include \
+            -DOPENIMAGEIO_LIBRARY=/tmp/android-deps/lib/libOpenImageIO.a \
+            -DOPENIMAGEIO_UTIL_LIBRARY=/tmp/android-deps/lib/libOpenImageIO_Util.a \
+            -DWITH_VULKAN_BACKEND=OFF -DWITH_GHOST_X11=OFF -DWITH_GHOST_WAYLAND=OFF \
+            2>&1 | tee native-results/blender-configure.log
+      - name: Build Linux host DNA generator and wire cross-build
+        run: |
+          set -euxo pipefail
+          # Cross-compiling Blender requires build-machine generators.
+          # Build the host executable from the same pinned Blender source.
+          sudo apt-get install -y --no-install-recommends libfreetype-dev libjpeg-dev libpng-dev libzstd-dev libepoxy-dev libopenimageio-dev
+          cmake -S /tmp/blender-src -B /tmp/blender-host -G Ninja \
+            -C /tmp/blender-src/build_files/cmake/config/blender_lite.cmake \
+            -C /tmp/blender-src/build_files/cmake/config/blender_headless.cmake \
+            -DWITH_LIBS_PRECOMPILED=OFF -DWITH_PYTHON=OFF \
+            -DWITH_CYCLES=OFF -DWITH_OPENIMAGEIO=OFF \
+            -DWITH_VULKAN_BACKEND=OFF -DWITH_GHOST_X11=OFF -DWITH_GHOST_WAYLAND=OFF
+          cmake --build /tmp/blender-host --target makesdna datatoc glsl_preprocess makesrna --parallel 4
+          file /tmp/blender-host/bin/makesdna /tmp/blender-host/bin/datatoc /tmp/blender-host/bin/glsl_preprocess /tmp/blender-host/bin/makesrna
+          # Imported host executables satisfy target dependencies without
+          # trying to link Android versions of the build-time generators.
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path("/tmp/blender-src")
+          dna = root / "source/blender/makesdna/intern/CMakeLists.txt"
+          s = dna.read_text()
+          begin = s.index("add_cc_flags_custom_test(makesdna)")
+          end = s.index("# Output dna.cc", begin)
+          s = s[:begin] + '''add_executable(makesdna IMPORTED GLOBAL)
+          set_target_properties(makesdna PROPERTIES IMPORTED_LOCATION "/tmp/blender-host/bin/makesdna")
+
+          ''' + s[end:]
+          dna.write_text(s)
+          toc = root / "source/blender/datatoc/CMakeLists.txt"
+          s = toc.read_text()
+          old = "add_executable(datatoc ${SRC})\noptimize_debug_target(datatoc)"
+          assert old in s
+          toc.write_text(s.replace(old, '''add_executable(datatoc IMPORTED GLOBAL)
+          set_target_properties(datatoc PROPERTIES IMPORTED_LOCATION "/tmp/blender-host/bin/datatoc")'''))
+          glsl = root / "source/blender/gpu/glsl_preprocess/CMakeLists.txt"
+          s = glsl.read_text()
+          old = "add_executable(glsl_preprocess ${SRC})\noptimize_debug_target(glsl_preprocess)"
+          assert old in s
+          glsl.write_text(s.replace(old, '''add_executable(glsl_preprocess IMPORTED GLOBAL)
+          set_target_properties(glsl_preprocess PROPERTIES IMPORTED_LOCATION "/tmp/blender-host/bin/glsl_preprocess")'''))
+          rna = root / "source/blender/makesrna/intern/CMakeLists.txt"
+          s = rna.read_text()
+          start = s.index("add_cc_flags_custom_test(makesrna)")
+          end = s.index("# Build bf_rna", start)
+          command = s.index("add_custom_command(", start)
+          # Keep generated-RNA command, but replace the cross-compiled executable
+          # and its link requirements with the native Linux tool.
+          s = s[:start] + '''add_executable(makesrna IMPORTED GLOBAL)
+          set_target_properties(makesrna PROPERTIES IMPORTED_LOCATION "/tmp/blender-host/bin/makesrna")
+
+          ''' + s[command:end] + s[end:]
+          rna.write_text(s)
+          # Blender's RNA runtime assumes Python refcount helpers exist;
+          # this build explicitly disables Python, so guard that one call.
+          rna_define = root / "source/blender/makesrna/intern/rna_define.cc"
+          s = rna_define.read_text()
+          old = "    BPY_DECREF(srna->py_type);"
+          assert s.count(old) == 1
+          rna_define.write_text(s.replace(old, "#  ifdef WITH_PYTHON\n" + old + "\n#  endif"))
+          tooltip = root / "source/blender/editors/interface/regions/interface_region_tooltip.cc"
+          s = tooltip.read_text()
+          old = "UNUSED_VARS(is_label, has_valid_context, has_valid_context_error);"
+          assert s.count(old) == 1
+          tooltip.write_text(s.replace(old, "UNUSED_VARS(has_valid_context, has_valid_context_error);"))
+          # Android Bionic has no POSIX shm_open/shm_unlink API.
+          # Use named files in the app-private temporary directory for the
+          # existing file-descriptor-backed mmap mechanism. Keep O_EXCL and
+          # unlink semantics, and do not silently disable subprocess support.
+          subprocess_src = root / "source/blender/blenlib/intern/BLI_subprocess.cc"
+          s = subprocess_src.read_text()
+          s = s.replace("shm_open(name.c_str(),", "open((std::string(getenv(\"TMPDIR\") ? getenv(\"TMPDIR\") : \"/data/local/tmp\") + name).c_str(),")
+          s = s.replace("shm_unlink(name_.c_str())", "unlink((std::string(getenv(\"TMPDIR\") ? getenv(\"TMPDIR\") : \"/data/local/tmp\") + name_).c_str())")
+          assert "shm_open(" not in s and "shm_unlink(" not in s
+          subprocess_src.write_text(s)
+          # Android's execinfo.h does not declare glibc backtrace helpers.
+          # Keep the Blender backtrace function but select its existing
+          # no-execinfo fallback only for Android.
+          system_src = root / "source/blender/blenlib/intern/system.cc"
+          s = system_src.read_text()
+          old = "#include <climits>"
+          assert s.count(old) == 1
+          s = s.replace(old, "#if defined(__ANDROID__)\n#  undef HAVE_EXECINFO_H\n#endif\n\n" + old)
+          assert "#if defined(__ANDROID__)\\n" not in s, "Literal escaped newline in Android guard"
+          system_src.write_text(s)
+          mmap_src = root / "source/blender/blenlib/intern/BLI_mmap.cc"
+          s = mmap_src.read_text()
+          old = "struct sigaction newact = {{nullptr}}, oldact = {{nullptr}};"
+          assert s.count(old) == 1
+          mmap_src.write_text(s.replace(old, "struct sigaction newact = {}, oldact = {};"))
+          # Android API 26 has clock_gettime, but timespec_get requires API 29.
+          # Reuse Blender's POSIX realtime clock path without raising minSdk.
+          uuid_src = root / "source/blender/blenlib/intern/uuid.cc"
+          s = uuid_src.read_text()
+          old = "#ifdef __APPLE__"
+          assert s.count(old) == 1
+          uuid_src.write_text(s.replace(old, "#if defined(__APPLE__) || defined(__ANDROID__)"))
+          PY
+          cmake -S /tmp/blender-src -B /tmp/blender-android
+      - name: Remove Linux-only link flags from Android Ninja target
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          ninja = Path('/tmp/blender-android/build.ninja')
+          content = ninja.read_text()
+          # Blender's generic UNIX platform config adds libutil and a Linux
+          # symbol export script. Neither belongs in a Bionic ARM64 link.
+          assert ' -lutil ' in content, 'Missing expected Linux libutil flag (check Blender CMake)'
+          content = content.replace(' -lutil ', ' ')
+          content, count = re.subn(r" -Wl,--version-script='[^']+'", '', content)
+          assert count > 0, 'Missing expected Linux ELF version-script flag (check Blender CMake)'
+          ninja.write_text(content)
+          assert ' -lutil ' not in ninja.read_text()
+          print(f'Android linker preflight: removed libutil and {count} Linux version scripts')
+          PY
+      - name: Attempt actual native Blender target compile
+        run: |
+          set -euxo pipefail
+          cmake --build /tmp/blender-android --target blender --parallel 4 \
+            2>&1 | tee native-results/blender-build.log
+          find /tmp/blender-android -type f -name blender -exec file {} \;
+      - name: Verify and collect Android ARM64 Blender binary
+        run: |
+          set -euo pipefail
+          test -s /tmp/blender-android/bin/blender
+          cp /tmp/blender-android/bin/blender native-results/blender
+          file native-results/blender | tee native-results/blender-file.txt
+          readelf -h native-results/blender | tee native-results/blender-elf-header.txt
+          readelf -l native-results/blender | tee native-results/blender-program-headers.txt
+          readelf -d native-results/blender | tee native-results/blender-dynamic.txt
+          grep -q 'Machine:.*AArch64' native-results/blender-elf-header.txt
+          grep -q '/system/bin/linker64' native-results/blender-program-headers.txt
+          cd native-results
+          sha256sum blender > blender.sha256
+      - name: Upload native binary and build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drnas-native-blender-android-arm64-${{ github.run_id }}
+          path: native-results/
+          if-no-files-found: error
+          retention-days: 14
