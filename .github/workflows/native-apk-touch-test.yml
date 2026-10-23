@@ -5,7 +5,7 @@ name: DRNAS touch controls - ARM64 APK
 # (middle button, Shift hold, horizontal wheel, F1-F12/numpad/Home keys, capability probe).
 on:
   push:
-    branches: [arena/e8ebe2c9-blender]
+    branches: ['arena/**']
     paths:
       # Source, patches and test code rebuild the APK; prose-only changes do not.
       - '.github/workflows/native-apk-touch-test.yml'
