@@ -111,6 +111,18 @@ cut(
     "remove obsolete zoom slider from the mouse controller",
 )
 
+# The cut also removes the old group's position call; attach the rebuilt dock as one popup.
+once(
+    "    drnasDockMouseButtons(group);",
+    '''    drnasDockMouseButtons(group);
+    drnasPosition(group, "zoom", false, 12, 18, 340, 80);
+    drnasPanels.get(group).anchor.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+    drnasPanels.get(group).anchor.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+    group.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+    group.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT;''',
+    "install and position the rebuilt mouse dock",
+)
+
 # ------------------------------------------------------------------ 4. replace every old button/radial surface with a trackpad + button bank
 cut(
     "  private void drnasDockMouseButtons(LinearLayout dock) {",

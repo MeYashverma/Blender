@@ -67,7 +67,7 @@ once('    group.setBackgroundColor(Color.argb(220, 22, 52, 73));',
      '    group.setBackgroundColor(Color.TRANSPARENT);')
 once('    group.addView(heading, new LinearLayout.LayoutParams(-1, dpDrnas(26)));',
      '    group.addView(heading, new LinearLayout.LayoutParams(-1, dpDrnas(24)));\n    drnasDockMouseButtons(group);')
-once('    drnasPosition(group, "zoom", true, 115, 96, 190, 80);', '''    drnasPosition(group, "zoom", true, 12, 18, 340, 80);
+once('    drnasPosition(group, "zoom", true, 115, 96, 190, 80);', '''    drnasPosition(group, "zoom", false, 12, 18, 340, 80);
     drnasPanels.get(group).anchor.height = ViewGroup.LayoutParams.WRAP_CONTENT;
     drnasPanels.get(group).anchor.width = ViewGroup.LayoutParams.WRAP_CONTENT;
     group.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;

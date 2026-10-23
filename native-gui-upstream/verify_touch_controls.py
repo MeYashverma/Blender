@@ -111,6 +111,9 @@ check('"mouse_controller_v2"' in activity
 check('drnasEnableDrag(grip, dock, "zoom")' in activity
       and "drnasDockGrip.setVisibility(drnasEdit ? View.VISIBLE : View.GONE)" in activity,
       "the whole mouse controller must move by an edit-only grip")
+check('drnasPosition(group, "zoom", false, 12, 18, 340, 80)' in activity
+      and "drnasPanels.get(group).anchor.width = ViewGroup.LayoutParams.WRAP_CONTENT" in activity,
+      "the rebuilt mouse controller must be attached at the bottom-right as one fitted popup")
 check("new DrnasMouseButtonView(" in activity
       and "DrnasMouseState.LEFT" in activity
       and "DrnasMouseState.MIDDLE" in activity

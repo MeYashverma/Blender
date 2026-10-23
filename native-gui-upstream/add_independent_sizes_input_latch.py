@@ -19,11 +19,11 @@ s = s[:a] + s[b:]
 s = s.replace('LMB/RMB + shortcut tipke', 'tipkovnica i naredbe')
 once('VELIČINA TIPKI • kotačić / – +', 'VELIČINA TIPKOVNICE I NAREDBI')
 once('    installDrnasMouseOptions(optionRows);', '    drnasInstallMouseSizeOptions(optionRows);\n    installDrnasMouseOptions(optionRows);')
-once('    drnasPosition(group, "zoom", true, 12, 18, 340, 80);', '''    drnasMouseDock = group; drnasDockGrip = heading;
+once('    drnasPosition(group, "zoom", false, 12, 18, 340, 80);', '''    drnasMouseDock = group; drnasDockGrip = heading;
     drnasRegisterSkinGroup(group);
     drnasDockZoomToggle = null; drnasDockZoomSlider = null;
     group.setClipChildren(false); group.setClipToPadding(false);
-    drnasPosition(group, "zoom", true, 12, 18, 340, 80);''')
+    drnasPosition(group, "zoom", false, 12, 18, 340, 80);''')
 once('    drnasSendInput(7, 0f, 0f, 0.08f + 0.0092f * init);', '''    drnasSendInput(7, 0f, 0f, 0.08f + 0.0092f * init);
     drnasMouseButtonSizes(drnasPrefs.getInt("mouse_button_percent", drnasPrefs.getInt("button_percent", 100)), false);''')
 
