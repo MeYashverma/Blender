@@ -58,7 +58,6 @@
     drnasMouseSpeed = Math.max(0.25f, Math.min(3f, drnasPrefs.getInt("mouse_speed", 100) / 100f));
     drnasPointerEffect = drnasPrefs.getBoolean("pointer_effect", true);
     drnasCursorPercent = Math.max(40, Math.min(150, drnasPrefs.getInt("cursor_percent", 70)));
-    drnasNavSpeed = Math.max(0.4f, Math.min(4f, drnasPrefs.getInt("nav_speed", 160) / 100f));
     drnasMouseButtons = new DrnasMouseState((bit, down) -> drnasEmitMouse(bit, down));
     drnasMouseButtons.setMiddleAvailable(drnasHasCapability(DRNAS_CAP_MIDDLE));
     drnasMouseButtonModel = new DrnasMouseButtonModel((bit, down) -> {

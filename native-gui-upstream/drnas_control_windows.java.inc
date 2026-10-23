@@ -18,7 +18,6 @@
       view = content;
       anchor = position;
       host = new FrameLayout(BlenderActivity.this);
-      host.setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility());
       host.addView(view, new FrameLayout.LayoutParams(position.width, position.height));
       popup = new android.widget.PopupWindow(host, 1, 1, false);
       popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
