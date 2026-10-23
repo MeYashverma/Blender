@@ -15,8 +15,8 @@ paths.
 
 ## Automated validation
 
-GitHub Actions run **39904531194** passed on commit
-`0d7676ddd3c72db187b22ec47ac99699189c521f`:
+GitHub Actions run **39904810797** passed on commit
+`4ffd5c6c2df3efddfd02bb6860c5df0c935f6195`:
 
 - Clean patch chain against pinned upstream `simfeo/blender@d93bd33cba768e19ee4387a31c0ea137ee2f0047`.
 - Fail-closed rerun check and `verify_touch_controls.py`.

@@ -28,7 +28,7 @@ release path clears held buttons and modifiers on cancel, focus loss, pause, sto
 
 ## Rebuilt mouse controller
 
-The controller is one movable, persisted landscape group:
+The controller opens at the bottom-right in a movable, persisted landscape group:
 
 - **Trackpad:** one-finger travel moves the Blender pointer; tap clicks LMB; two-finger vertical or
   horizontal travel scrolls; pinch zooms; two-finger tap clicks RMB.
