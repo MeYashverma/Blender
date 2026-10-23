@@ -48,7 +48,7 @@ javac -Xlint:deprecation -d "$OUT" "${sources[@]}"
 
 status=0
 for name in "${TESTS[@]}"; do
-  if [[ "$name" == "DrnasGpuPolicyTest" || "$name" == "DrnasVisualDesignTest" || "$name" == "DrnasMouseButtonModelTest" || "$name" == "DrnasMousePadGestureTest" ]]; then
+  if [[ "$name" == "DrnasGpuPolicyTest" || "$name" == "DrnasVisualDesignTest" ]]; then
     java -cp "$OUT" "org.blender.blender.$name"
   else
     java -cp "$OUT" "$name"

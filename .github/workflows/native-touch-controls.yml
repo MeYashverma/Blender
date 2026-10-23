@@ -88,7 +88,7 @@ jobs:
         run: |
           for f in build/tests.log build/javac.log; do
             test -f "$f" || continue
-            grep -E 'error:|error$|warning:|Exception|FAIL|PASS:' "$f" | head -60 | sed 's/\r$//' | while read -r line; do
+            grep -E 'error:|error$|warning:|Exception|AssertionError|FAIL|PASS:' "$f" | head -60 | sed 's/\r$//' | while read -r line; do
               echo "::error title=${f}::$(printf '%s' "$line" | tr -d '%,' | cut -c1-400)"
             done
           done
@@ -126,6 +126,14 @@ jobs:
         with:
           name: drnas-java-diagnostics
           path: build/javac.log
+          if-no-files-found: ignore
+
+      - name: Upload the Android-free test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drnas-jvm-tests
+          path: build/tests.log
           if-no-files-found: ignore
 
       - name: Upload the compiled overlay for inspection
