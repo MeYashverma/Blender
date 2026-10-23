@@ -40,7 +40,7 @@ expect('drnasCompactMouseWindow' in activity,"floating mouse window lost")
 # selected by DrnasLanguage, not by Android's system locale.
 for label in (
     '"English"', '"Hrvatski"', '"Relative mouse / touchpad (off: direct touch)"',
-    '"Mouse speed: "', '"Mouse and zoom"', '"Group width"', '"Group height"',
+    '"Mouse speed: "', '"Mouse and touchpad"', '"Group width"', '"Group height"',
     '"DRNAS LANGUAGE (restart to apply)"', '"Save and Exit"',
     '"RESOLUTION • keep aspect ratio"', '"System Vulkan (default)"',
 ):
