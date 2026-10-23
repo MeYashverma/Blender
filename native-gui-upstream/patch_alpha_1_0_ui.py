@@ -80,17 +80,17 @@ labels = {
     "Miš / touchpad (isključeno: direktni dodir)": "Relative mouse / touchpad (off: direct touch)",
     "Efekt pokazivača / krug klika (miš način)": "Pointer click indicator (mouse mode)",
     "Brzina miša: ": "Mouse speed: ",
-    "Miš: tap = lijevi klik • 2 prsta = zoom / desni tap":
-        "Mouse: tap = left click; two fingers = zoom / right tap",
+    "Miš: pomakni za pokazivač • dva prsta: pomicanje / pinch • drži MMB za orbit":
+        "Mouse: drag to move pointer; two fingers to scroll or pinch; hold MMB to orbit",
     "Veličina kursora: ": "Cursor size: ",
     "Veličina kursora od 40 do 150 posto": "Cursor size from 40 to 150 percent",
     "Osjetljivost gesta": "Gesture sensitivity",
     "Prozirnost ": "Opacity ",
-    "miša i zooma": "mouse and zoom",
+    "miša i touchpada": "mouse and touchpad",
     "tipkovnice": "keyboard",
-    "Uredi miš i zoom": "Edit mouse and zoom",
+    "Uredi miš i touchpad": "Edit mouse and touchpad",
     "Uredi veličinu i raspored tipkovnice": "Edit keyboard size and layout",
-    "Miš i zoom": "Mouse and zoom",
+    "Miš i touchpad": "Mouse and touchpad",
     "Tipkovnica i raspored": "Keyboard and layout",
     "Širina grupe": "Group width",
     "Visina grupe": "Group height",
@@ -107,7 +107,7 @@ labels = {
     "Zatvori postavke i vrati se Blenderu": "Close settings and return to Blender",
     "Ručkicom ⠿ pomakni kontrole; položaj se sprema automatski":
         "Drag controls using ⠿; position saves automatically",
-    "VELIČINA RADIALNOG MIŠA": "RADIAL MOUSE SIZE",
+    "VELIČINA MIŠA I TOUCHPADA": "MOUSE AND TOUCHPAD SIZE",
     "% • LMB / MMB / RMB · scroll": "% • LMB / MMB / RMB · scroll",
     "Dvostruki dodir: zaključaj tipku • jedan dodir: otključaj":
         "Double-tap to lock; tap once to unlock",

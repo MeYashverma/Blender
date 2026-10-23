@@ -162,7 +162,9 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
     line.setBackground(drnasPill(Color.argb(238, 17, 34, 53)));
 
     final DrnasIconButton opener = new DrnasIconButton(this);
-    opener.setText("⌨");
+    opener.setText("");
+    opener.setDrnasIcon("keyboard", DrnasSkin.ICON_MD);
+    opener.setContentDescription("Keyboard shortcuts");
     opener.setAllCaps(false);
     opener.setTextColor(drnasTextWhite);
     opener.setTextSize(17);
@@ -215,11 +217,14 @@ swap("  private void addDrnasCommand(LinearLayout row, String label, int android
     opener.setOnClickListener(v -> {
       boolean expand = scroll.getVisibility() != View.VISIBLE;
       scroll.setVisibility(expand ? View.VISIBLE : View.GONE);
-      opener.setText(expand ? "✕" : "⌨");
+      opener.setDrnasIcon(expand ? "close" : "keyboard", DrnasSkin.ICON_MD);
+      opener.setContentDescription(expand ? "Close shortcut shelf" : "Open shortcut shelf");
     });
 
     final DrnasIconButton settings = new DrnasIconButton(this);
-    settings.setText("⚙");
+    settings.setText("");
+    settings.setDrnasIcon("settings", DrnasSkin.ICON_MD);
+    settings.setContentDescription("Control settings");
     settings.setAllCaps(false);
     settings.setTextColor(drnasTextWhite);
     settings.setTextSize(16f);

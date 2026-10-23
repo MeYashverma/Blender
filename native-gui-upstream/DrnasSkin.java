@@ -26,7 +26,7 @@ public final class DrnasSkin {
 
   /** Floating surface behind a control group. 88% opaque so the viewport still reads through. */
   public static final int SURFACE = 0xE01C1F24;
-  /** Slightly lifted surface for the central, most-used target (the MMB puck). */
+  /** Slightly lifted surface for primary mouse-pad and button targets. */
   public static final int SURFACE_RAISED = 0xE6282D34;
   /** Pressed / hovered fill inside a surface. */
   public static final int SURFACE_PRESSED = 0x33FFFFFF;
@@ -93,9 +93,10 @@ public final class DrnasSkin {
   public static final float ICON_MD = 20f;
   public static final float ICON_LG = 24f;
 
-  /** Visual diameter of a dock target; the touch region is larger. */
-  public static final float DOCK_TARGET = 52f;
-  public static final float DOCK_TARGET_CENTRE = 58f;
+  /** Minimum clickable mouse button height at the smallest supported controller scale. */
+  public static final float MOUSE_BUTTON_MIN = 48f;
+  /** Mouse buttons remain substantial targets even when the drawing is compact. */
+  public static final float MOUSE_BUTTON_TARGET = 54f;
   /** Minimum touch diameter, independent of how small the icon looks. */
   public static final float TOUCH_MIN = 48f;
 
@@ -103,9 +104,6 @@ public final class DrnasSkin {
   public static final float TOOL_CELL = 42f;
   public static final float TOOL_CELL_TOUCH = 48f;
   public static final float TOOLBAR_HEIGHT = 52f;
-
-  /** Orientation gizmo diameter. */
-  public static final float GIZMO = 118f;
 
   public static final float HAIRLINE_WIDTH = 1f;
   public static final float ICON_STROKE = 1.7f;

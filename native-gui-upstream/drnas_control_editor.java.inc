@@ -7,7 +7,7 @@
 
   private void drnasOpacitySlider(LinearLayout rows, boolean mouse) {
     String key = mouse ? "mouse_transparency" : "keyboard_transparency";
-    drnasEditorSlider(rows, "Prozirnost " + (mouse ? "miša i zooma" : "tipkovnice"), 0, 85,
+    drnasEditorSlider(rows, "Prozirnost " + (mouse ? "miša i touchpada" : "tipkovnice"), 0, 85,
         drnasPrefs.getInt(key, 0), "%", value -> {
           drnasPrefs.edit().putInt(key, value).apply();
           drnasApplyOpacity();
@@ -16,9 +16,6 @@
   private void drnasApplyOpacity() {
     if (drnasMouseDock != null) drnasMouseDock.setAlpha(1f - drnasPrefs.getInt("mouse_transparency", 0) / 100f);
     if (drnasKeyStrip != null) drnasKeyStrip.setAlpha(1f - drnasPrefs.getInt("keyboard_transparency", 0) / 100f);
-    if (drnasToolPaletteView != null) {
-      drnasToolPaletteView.setAlpha(1f - drnasPrefs.getInt("tools_transparency", 0) / 100f);
-    }
   }
   private void drnasEditorSlider(LinearLayout rows, String title, int min, int max,
       int value, String suffix, java.util.function.IntConsumer changed) {
@@ -106,10 +103,11 @@
     DrnasPanel panel = drnasPanels.get(content); if (panel == null) return;
     FrameLayout.LayoutParams cp = (FrameLayout.LayoutParams)content.getLayoutParams();
     cp.topMargin = dpDrnas(27); content.setLayoutParams(cp);
-    TextView gear = drnasUiLabel("⚙"); gear.setTextSize(18); gear.setAlpha(0.72f);
-    gear.setGravity(Gravity.CENTER); gear.setBackground(drnasPill(Color.argb(190, 23, 42, 62)));
-    gear.setContentDescription(mouse ? "Uredi miš i zoom" : "Uredi veličinu i raspored tipkovnice");
-    FrameLayout.LayoutParams gp = new FrameLayout.LayoutParams(dpDrnas(34), dpDrnas(27), Gravity.TOP | Gravity.RIGHT);
+    DrnasIconTextView gear = new DrnasIconTextView(this);
+    gear.setDrnasIcon("settings", DrnasSkin.ICON_MD, DrnasSkin.ICON_SECONDARY, false);
+    gear.setBackground(drnasPill(Color.argb(190, 23, 42, 62)));
+    gear.setContentDescription(mouse ? "Uredi miš i touchpad" : "Uredi veličinu i raspored tipkovnice");
+    FrameLayout.LayoutParams gp = new FrameLayout.LayoutParams(dpDrnas(48), dpDrnas(48), Gravity.TOP | Gravity.RIGHT);
     panel.host.addView(gear, gp);
     gear.setOnClickListener(v -> drnasOpenGroupEditor(mouse));
     panel.schedule();
@@ -121,7 +119,7 @@
     root.setPadding(dpDrnas(10), dpDrnas(6), dpDrnas(10), dpDrnas(8));
     root.setBackground(drnasPill(Color.argb(250, 15, 30, 47)));
     Button close = new Button(this); close.setAllCaps(false);
-    close.setText((mouse ? "Miš i zoom" : "Tipkovnica i raspored") + "   ✕");
+    close.setText((mouse ? "Miš i touchpad" : "Tipkovnica i raspored") + "   ✕");
     drnasStyleKey(close, false); root.addView(close, new LinearLayout.LayoutParams(-1, dpDrnas(44)));
     android.widget.ScrollView scroller = new android.widget.ScrollView(this);
     LinearLayout rows = new LinearLayout(this); rows.setOrientation(LinearLayout.VERTICAL);

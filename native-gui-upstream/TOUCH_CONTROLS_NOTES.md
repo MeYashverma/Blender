@@ -1,135 +1,97 @@
-# DRNAS touch control layer — input contract
+# DRNAS touch controls — rebuilt mouse-controller contract
 
-This file is the single description of how a finger becomes a Blender mouse event. The Java,
-the native bridge and the on-screen controls are checked against it by
-`verify_touch_controls.py`, so the three cannot drift apart silently.
+This document describes the current native Android patch pipeline. The mouse ring, navigation dial,
+radial palette, and their gesture models are removed from the maintained source set. The replacement
+is a Blender-dark floating mouse controller with a broad relative trackpad, a dedicated wheel rail,
+and separate LMB/MMB/RMB targets. This is an implementation contract, not visual or device acceptance:
+that still requires an Android build, screenshots, and real-touch testing.
 
-## Native action numbers (`nativeOnDrnasInput(action, x, y, value)`)
+## Native input bridge
 
-| action | meaning | Java sender |
-|-------:|---------|-------------|
-| 1 | cursor move to (x, y) in native space | `drnasSendInput(1, …)`, gesture sink |
-| 2 / 3 | left button down / up | `drnasEmitMouse(LEFT, …)` |
-| 4 / 5 | right button down / up | `drnasEmitMouse(RIGHT, …)` |
-| 6 | vertical wheel, `value` in notches (fractional accumulates natively) | mouse-ring scroll sector, pinch |
-| 7 | touch gesture sensitivity (0.08 … 1.0) | SENS slider |
-| 8 / 9 | **middle button down / up** (new) | `drnasEmitMouse(MIDDLE, …)`, nav dial orbit/pan |
-| 10 / 11 | **Shift hold on / off** (new) | three-finger pan gesture, two-finger nav-dial drag |
-| 12 | **horizontal wheel** (new) | mouse-ring scroll sector (sideways swipe) |
+`nativeOnDrnasInput(action, x, y, value)` keeps the existing Blender/GHOST input path. The controller
+adds no separate Blender process, app identity, storage area, renderer, or GPU behavior.
 
-Actions 8–12 exist only after `patch_native_touch_extra.py`. The overlay asks
-`nativeDrnasCapabilities()` which of them the running `libblender.so` supports and disables (with a
-visible reason) anything it cannot deliver. On an older library the symbol is missing, Java catches
-the `UnsatisfiedLinkError` and behaves exactly like Alpha 1.0 plus the fixed pointer mapping.
+| action | meaning | controller use |
+|-------:|---------|----------------|
+| 1 | move pointer to `(x, y)` in native space | relative trackpad movement |
+| 2 / 3 | LMB down / up | dedicated LMB target or trackpad tap |
+| 4 / 5 | RMB down / up | dedicated RMB target or two-finger tap |
+| 6 | vertical wheel, fractional notches accumulated natively | wheel rail, two-finger scroll, pinch zoom |
+| 7 | existing touch-gesture sensitivity input | compatibility with the upstream gesture bridge |
+| 8 / 9 | MMB down / up | dedicated MMB target, viewport orbit |
+| 10 / 11 | Shift hold on / off | existing three-finger pan gesture |
+| 12 | horizontal wheel | horizontal two-finger scroll when supported |
 
-Capability bits (identical constants in `GHOST_AndroidMain.cc` and `BlenderActivity.java`):
+The JNI capability probe disables controls the loaded native library cannot deliver. A physical
+mouse continues through the native path, including hover, wheel and middle-button events. The input
+release path clears held buttons and modifiers on cancel, focus loss, pause, stop and exit.
 
-| bit | value | meaning |
-|----:|------:|---------|
-| MIDDLE | 1 | actions 8/9 available |
-| SHIFT | 2 | actions 10/11 available |
-| HSCROLL | 4 | action 12 available |
-| KEYS | 8 | F1–F12, numpad, Home/End/PgUp/PgDn, punctuation reach GHOST |
-| GESTURES | 16 | the touch gesture layer is present in this build |
+## Rebuilt mouse controller
 
-## Gesture model (relative / PAD mode, `DrnasGestureEngine`)
+The controller is one movable, persisted landscape group:
 
-| gesture | emitted mouse input |
-|---------|---------------------|
-| one-finger tap | LMB press + release **at the landing point** |
-| one-finger drag | LMB down at the landing point (after the touch slop), pointer follows, LMB up |
-| two-finger drag | MMB down, pointer follows the centroid, MMB up → orbit |
-| pinch in / out | wheel notches → zoom |
-| three-finger drag | Shift + MMB down → pan |
-| two-finger tap | RMB press + release → context menu |
+- **Trackpad:** one-finger travel moves the Blender pointer; tap clicks LMB; two-finger vertical or
+  horizontal travel scrolls; pinch zooms; two-finger tap clicks RMB.
+- **Wheel rail:** a distinct, narrow rail provides direct vertical wheel scrolling without requiring
+  a gesture.
+- **Buttons:** separate, always-visible LMB, MMB and RMB views. Each has independent pointer
+  ownership, visible pressed state and a minimum target size; press-and-hold emits down/up and a
+  deliberate double-tap latches/unlatches.
+- **Orbit:** hold MMB while moving the trackpad. The middle target is visibly disabled if the native
+  library lacks MMB support.
+- **Edit mode:** only then does a temporary grip appear. Dragging the grip moves the whole group;
+  size, opacity, visibility and position remain persisted. Safe-area clamps keep a useful portion of
+  the group reachable after rotation, resizing, cutouts or system insets.
 
-Rules the tests enforce:
+First-run migration removes stale radial-tool positions, restores a clean controller layout, collapses
+keyboard shortcuts, and selects relative-pointer mode so the trackpad has an immediately visible
+cursor. Later preference changes are not overwritten.
 
-* the press is reported where the finger landed, never where it has already travelled;
-* every press gets exactly one release, including after `ACTION_CANCEL`, `onPause`, `onStop` and
-  loss of window focus;
-* a gesture never also produces a click;
-* fingers are tracked by **pointer id**, so an Android pointer-index reorder cannot swap buttons or
-  jump the cursor;
-* wheel remainders are kept, and a single event is capped at ±4 notches so the native ±8 clamp can
-  never clip a fast pinch;
-* when MMB is unavailable, two-finger drag degrades to vertical scroll instead of doing nothing.
+The separate direct-touch mode remains available for users who prefer to touch Blender's viewport
+and panels directly. Its existing GHOST gesture routing is retained rather than forcing viewport
+orbit over file-browser or panel scrolling. The full-screen input layer also preserves physical
+mouse/hover input; it is not a replacement for the new docked trackpad.
 
-Direct-touch mode is deliberately left to the upstream GHOST gesture code (tap = click, two-finger
-= pan/zoom, three-finger = pan, with the existing DRNAS sensitivity scaling). Upstream decides
-pan-versus-zoom from the geometry and, crucially, its two-finger scroll is what makes Blender's own
-file browser and panels scroll. Replacing that with an unconditional orbit would break panel
-scrolling in editors the overlay cannot reason about, so orbit is offered through the pad and the
-navigation widget instead. This is a deliberate scope decision, not an oversight.
+## Gesture and ownership models
 
-## Radial, purpose-specific control system
+`DrnasMousePadGesture` is Android-free and owns trackpad recognition, pointer IDs, scroll/pinch
+remainders, tap decisions, and cancellation. `DrnasMouseButtonModel` is Android-free and owns each
+button's independent touch owners and latching state. Their Android views render feedback and call
+the existing Activity/native bridge; neither model directly depends on Android.
 
-The landscape overlay uses three independently movable circular surfaces rather than a row of
-floating desktop buttons. The mouse ring places left, right and middle click in separate large
-sectors, with scroll in its own upper sector. Each button has independent press/release and
-double-tap latch/unlock state; MMB and horizontal scrolling are visibly capability-gated. The ring
-uses the Android-free `DrnasDockGesture` ownership model and releases momentary presses on cancel
-and lifecycle events. A physical mouse, the native viewport and keyboard paths remain unchanged.
+The retained `DrnasGestureEngine` covers the separate direct-touch mode and native gesture bridge.
+It is not the new dock's mouse controller. Both paths must release every held input, and a gesture
+must not also produce a click after it has been classified as a drag or scroll.
 
-The navigation dial puts orbit in the center, pan in a dedicated drag sector (and supports two-finger
-pan), with zoom-in, zoom-out and frame-selected on the remaining sectors. A second radial pie changes
-purpose from its center hub: Object, Edit, Timeline and View pages each expose eight local-vector
-commands. The pages use Blender key bindings, and commands are gated while the Android keyboard is
-editing text. The ring, dial and pie each have independent saved positions; EDIT mode turns each
-control into its own drag surface. Existing two-thumb, one-hand, compact, large-target, tablet and
-desktop presets now include the tool wheel. `DrnasDockGestureTest`, `DrnasNavGestureTest` and
-`DrnasRadialPaletteModelTest` cover pointer ownership, orbit/pan transitions, page/action mapping and
-polar hit testing. Device screenshots and real-touch behavior remain a separate acceptance gate.
+## Layout and visual design
 
-## Coordinate model (`DrnasPointerMap`)
+Only the mouse controller and keyboard/shortcut shelf are rendered touch-control groups. The
+presets, safe-area checks, and saved sizes apply to those groups; there are no navigation or radial
+palette groups. The visual layer uses local vector icons, Blender-dark surfaces, quiet idle opacity,
+clear pressed feedback, and no emoji as primary control icons. Mouse hit targets retain a 48 dp
+minimum; compact presets may reduce surrounding spacing but not the button touch area.
 
-Two rectangles exist and are not the same after stretch/rotation/IME:
+## Physical input and keyboard
 
-* **view space** — the overlay window/popup that receives the finger;
-* **native space** — the GHOST surface that `nativeOnDrnasInput` addresses.
+The physical mouse, Blender viewport, GPU paths, and Android keyboard/IME remain on their existing
+bridges. The shortcut shelf remains editable and persisted, and includes Blender view commands for
+front/side/top/perspective, frame selected, and frame all. Text entry uses the existing IME commit
+path rather than faking Unicode with key presses.
 
-The pointer is stored in native space only. The cursor sprite is drawn back through
-`viewX/viewY`, so what the user sees and what Blender receives cannot disagree. `MODE_FIT` maps one
-rectangle onto the other uniformly (the popup covers the whole surface); `MODE_SUBRECT` maps 1:1
-with an offset (a pad that shrank because the keyboard is up). Clamping happens once, before the
-scale, and the mapping is monotonic, so every native pixel — including all four corners and the
-last addressable row/column — is reachable without the cursor leaving the display.
+## Validation gates
 
-## Layout model (`DrnasControlLayout`)
+The clean pinned-upstream patch chain and `verify_touch_controls.py` validate integration anchors,
+Java/native action contracts, absence of superseded radial classes, lifecycle release paths, and
+keyboard mappings. `run_input_tests.sh` exercises Android-free models. Neither static validation nor
+JVM tests establishes layout quality on a device. Before calling this accepted, build the Android
+APK, capture screenshots at representative landscape sizes, and test simultaneous touch, edge
+scroll, pinch, cancellation, button latching, physical peripherals, rotation and keyboard/IME on a
+real touch device.
 
-Every group keeps an independent offset, size, button scale, opacity, visibility and expanded flag.
-`clampOffset`/`clampGroup` guarantee that at least `MIN_VISIBLE_DP` (56 dp) of a group stays inside
-the safe area after a rotation, a resize, a cutout or a system-gesture inset change. Presets write
-all groups at once so a user never has to mirror controls by hand, and the desktop preset hides the
-overlay without destroying the saved layout.
+## Research references
 
-## Keyboard
-
-Normal text entry still goes through `nativeOnCommitText` (IME composition, Unicode, emoji) and the
-existing `nativeOnKey` path for Backspace/Enter — the overlay never fakes text with key presses.
-Modifiers are momentary on press-and-hold, latched on double-tap, and released by "Clr". The new
-arrow/Backspace/"Kb ✕" keys call the same bridge, and `showKeyboard()`/`hideKeyboard()` keep Android
-focus behaviour unchanged.
-
-## Shortcut strip contract
-
-* Every shipped button can be moved earlier/later and hidden from the settings panel; the order and
-  the hidden set are stored in the `shortcut_strip` preference as `order|hidden`.
-* Decoding is tolerant: labels from another build are dropped, labels added by a newer build are
-  appended, duplicates collapse, and at least one button always stays visible.
-* The strip itself is not rebuilt - the same `Button` objects are reordered inside their rows, so
-  key bindings, latches and listeners survive an arrangement change.
-
-## Gesture switches
-
-`gesture_orbit`, `gesture_pinch`, `gesture_pan` and `gesture_rmb` each enable one recogniser, and
-`gesture_sensitivity` (50-200 %) scales the touch slop; `zoom_rate` sets wheel notches per pinch
-pixel and `pointer_acceleration` sets the extra speed for fast swipes. A capability that the
-running library cannot provide disables its switch content, it never silently fakes the gesture.
-
-## While a text field is being edited
-
-If the soft keyboard is on screen, the navigation widget's keys (frame, axis, perspective) refuse
-to fire and flash a short refusal instead. A numpad key would otherwise be typed into Blender's own
-text field. The gesture pads and the pointer keep working, because moving the mouse is exactly what
-a text field expects.
+The interaction pattern borrows useful control-system ideas from [PojavLauncher custom controls](https://pojavlauncher.app/wiki/getting_started/CUSTOM-CONTROLS.html)
+(editable layouts, independent buttons and presets), without copying its Minecraft-specific map or
+visual skin. Blender's [Beyond Mouse & Keyboard](https://code.blender.org/2025/07/beyond-mouse-keyboard/)
+notes task-oriented floating controls and reduced density, while the [Blender hardware manual](https://docs.blender.org/manual/en/latest/getting_started/configuration/hardware.html)
+explains why the three mouse buttons and wheel are important.

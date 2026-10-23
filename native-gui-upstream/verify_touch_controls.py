@@ -57,8 +57,8 @@ check("drnasSendInput(1, drnasNativePointerX(" not in activity,
       "pointer must not be mapped twice")
 check(activity.count("private void drnasSendInput(int action") == 1,
       "exactly one native emitter")
-check(activity.count("class DrnasTrackpad") == 1,
-      "exactly one trackpad implementation")
+check("DrnasMouseSurfaceView drnasMouseSurfaceView" in activity,
+      "the rebuilt mouse surface must be installed in the Activity")
 check("float lastX, lastY, travel;" not in activity,
       "old ad-hoc trackpad state must be gone")
 
@@ -73,7 +73,6 @@ for needle, what in [
     ("drnasGestureAction(", "MotionEvent action translation"),
     ("drnasReleaseTouchInput(", "lifecycle input release"),
     ("drnasClampLayout(", "layout clamping"),
-    ("installDrnasNavWidget(", "navigation widget"),
     ("installDrnasLayoutOptions(", "layout presets"),
     ("installDrnasKeyExtras(", "keyboard extras"),
 ]:
@@ -93,34 +92,46 @@ for signature in [
     count = activity.count(signature)
     check(count == 1, f"{signature!r} must be declared exactly once, found {count}")
 
-# ---------------------------------------------------------------- 3. integrated mouse dock completeness
-check("DrnasMouseRingView drnasMouseDockView" in activity
-      and "new DrnasMouseRingView(this)" in activity,
-      "the mouse controls must be installed as one circular, movable mouse surface")
-check("drnasMouseDockView.setMiddleAvailable(drnasHasCapability(DRNAS_CAP_MIDDLE))" in activity
-      and "drnasMouseDockView.setHorizontalAvailable(drnasHasCapability(DRNAS_CAP_HSCROLL))" in activity,
-      "middle and horizontal wheel input must be capability-gated")
-check("drnasMouseButtons.press(bit)" in activity and "drnasMouseButtons.release(bit)" in activity,
-      "the ring must emit independent LMB/MMB/RMB press and release events")
-check("drnasSendInput(6, 0f, 0f, vertical)" in activity
-      and "drnasSendInput(12, 0f, 0f, horizontal)" in activity,
-      "the scroll sector must send vertical and horizontal wheel events")
-mouse_ring_source = read(patch_dir / "DrnasMouseRingView.java")
-check("DrnasDockGesture" in mouse_ring_source and "double-tap" in mouse_ring_source.lower(),
-      "the mouse ring must expose tested click/latch/unlock semantics")
-nav_gesture_source = read(patch_dir / "DrnasNavGesture.java")
-nav_source = read(patch_dir / "DrnasNavigationPadView.java")
-palette_source = read(patch_dir / "DrnasRadialPaletteView.java")
-palette_model = read(patch_dir / "DrnasRadialPaletteModel.java")
-check("DrnasNavigationPadView" in activity and "DrnasRadialPaletteView" in activity,
-      "the circular navigation and purpose-specific tool palettes must be installed")
-check("PAGE_OBJECT" in palette_model and "PAGE_EDIT" in palette_model
-      and "PAGE_TIMELINE" in palette_model and "PAGE_VIEW" in palette_model,
-      "the radial palette must provide object/edit/timeline/view pages")
-check("drnasToolPaletteView" in activity and "tools_x" in activity,
-      "the tool palette must have an independently movable saved position")
-check("DrnasNavGesture" in nav_source and "forcePan" in nav_gesture_source,
-      "the nav dial must support orbit and the dedicated pan sector")
+# ---------------------------------------------------------------- 3. Pojav-style mouse controller completeness
+for needle, what in [
+    ("DrnasMouseSurfaceView drnasMouseSurfaceView", "trackpad view"),
+    ("DrnasMouseButtonModel drnasMouseButtonModel", "independent button model"),
+    ("DrnasMouseButtonView", "individually accessible button views"),
+    ("drnasMovePointerRelative(", "relative cursor movement"),
+    ("drnasMouseSurfaceView.releaseAll()", "trackpad cancellation release"),
+    ("drnasMouseButtonModel.releaseAll()", "button lifecycle release"),
+]:
+    check(needle in activity, f"mouse controller is missing {what}")
+check("DrnasMouseSurfaceView(this)" in activity
+      and "drnasMouseSurfaceView.setListener" in activity,
+      "the native overlay must install the touchpad and its input listener")
+check("new DrnasMouseButtonView(" in activity
+      and "DrnasMouseState.LEFT" in activity
+      and "DrnasMouseState.MIDDLE" in activity
+      and "DrnasMouseState.RIGHT" in activity,
+      "the controller must expose distinct LMB, MMB and RMB controls")
+button_view_source = read(patch_dir / "DrnasMouseButtonView.java")
+check("model.down(pointerId, bit" in button_view_source and "model.up(pointerId" in button_view_source,
+      "button views must use the tested independent button-ownership model")
+pad_source = read(patch_dir / "DrnasMouseSurfaceView.java")
+pad_model = read(patch_dir / "DrnasMousePadGesture.java")
+button_model = read(patch_dir / "DrnasMouseButtonModel.java")
+check("TRACKPAD" in pad_source and "wheel_up" in pad_source and "wheel_down" in pad_source,
+      "the mouse surface must be visually labelled and expose a dedicated wheel rail")
+check("ACTION_POINTER_DOWN" in pad_model and "ACTION_POINTER_UP" in pad_model
+      and "find(" in pad_model,
+      "touchpad multi-touch must preserve pointer IDs across Android index reorders")
+check("DrnasMousePadGestureTest" in read(patch_dir / "run_input_tests.sh")
+      and "DrnasMouseButtonModelTest" in read(patch_dir / "run_input_tests.sh"),
+      "the new trackpad and button state models must run in JVM tests")
+old_types = ("DrnasMouseRingView", "DrnasNavigationPadView", "DrnasRadialPaletteView",
+             "DrnasRadialPaletteModel", "DrnasDockGesture", "DrnasNavGesture")
+for old in old_types:
+    check(old not in activity, f"superseded radial/dial control remains: {old}")
+    check(not (patch_dir / f"{old}.java").is_file(),
+          f"superseded radial/dial source remains in the maintained source set: {old}")
+for old in ("installDrnasNavWidget(", "installDrnasToolPalette("):
+    check(old not in activity, f"superseded radial/dial control remains: {old}")
 
 # ---------------------------------------------------------------- 4. Java <-> native contract
 java_actions = set()
@@ -169,7 +180,7 @@ for needle, what in [
     ("KEYCODE_NUMPAD_DOT", "frame selected key"),
     ("KEYCODE_MOVE_HOME", "frame all key"),
 ]:
-    check(needle in activity, f"navigation widget is missing the {what}")
+    check(needle in activity, f"shortcut shelf is missing the {what}")
 check("AKEYCODE_F1 && keycode <= AKEYCODE_F12" in system,
       "native conversion must map function keys (Search = F3)")
 check("AKEYCODE_NUMPAD_0 && keycode <= AKEYCODE_NUMPAD_9" in system,
@@ -228,14 +239,12 @@ logic_classes = sorted(p.name for p in patch_dir.glob("Drnas*.java")
                                           "DrnasInitLog.java", "DrnasLanguage.java",
                                           "DrnasGpuPolicy.java", "DrnasChrome.java", "DrnasSkin.java", "DrnasIcons.java",
                                           "DrnasIconButton.java", "DrnasIconTextView.java",
-                                          "DrnasOrientationGizmo.java", "DrnasMouseDockView.java", "DrnasMouseRingView.java",
-                                          "DrnasNavigationPadView.java", "DrnasRadialPaletteView.java"})
+                                          "DrnasOrientationGizmo.java", "DrnasMouseDockView.java",
+                                          "DrnasMouseSurfaceView.java", "DrnasMouseButtonView.java"})
 test_names = {p.name for p in patch_dir.glob("*Test.java")}
 runner = read(patch_dir / "run_input_tests.sh")
-check("DrnasDockGesture" in runner and "DrnasDockGestureTest" in runner
-      and "DrnasNavGesture" in runner and "DrnasNavGestureTest" in runner
-      and "DrnasRadialPaletteModelTest" in runner,
-      "the mouse, navigation and radial-palette tests must run in the JVM suite")
+check("DrnasMouseButtonModelTest" in runner and "DrnasMousePadGestureTest" in runner,
+      "the trackpad and button-ownership tests must run in the JVM suite")
 check("DrnasVisualDesignTest.java" in test_names,
       "the shared Blender-dark palette and icon contract need a design-system test")
 for source in logic_classes:

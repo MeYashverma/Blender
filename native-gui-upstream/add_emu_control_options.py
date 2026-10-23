@@ -31,6 +31,10 @@ for label, key, mod in [('Undo','Z','CTRL'),('Save','S','CTRL'),('Duplicate','D'
     keys += f'    drnasSmallKey("{label}", KeyEvent.KEYCODE_{key}, KeyEvent.META_{mod}_ON, bottom);\n'
 for label, key in [('Front','1'),('Side','3'),('Top','7')]:
     keys += f'    drnasSmallKey("{label}", KeyEvent.KEYCODE_NUMPAD_{key}, 0, bottom);\n'
+keys += '''    drnasSmallKey("Perspective", KeyEvent.KEYCODE_NUMPAD_5, 0, bottom);
+    drnasSmallKey("Frame Selected", KeyEvent.KEYCODE_NUMPAD_DOT, 0, bottom);
+    drnasSmallKey("Frame All", KeyEvent.KEYCODE_MOVE_HOME, 0, bottom);
+'''
 for label, const in [('Shift','SHIFT'),('Ctrl','CTRL'),('Alt','ALT')]:
     keys += f'''    final Button {label.lower()} = drnasSmallKey("{label}", KeyEvent.KEYCODE_{const}_LEFT, 0, bottom);
     {label.lower()}.setOnClickListener(v -> drnasToggleModifier(KeyEvent.META_{const}_ON,
@@ -52,16 +56,17 @@ once('      button.setTextSize(10.5f * factor);', '      button.setTextSize(13f 
 # Shared DrnasSkin/DrnasChrome tokens replace the previous gradient and per-key background.
 once('    options.addView(drnasUiLabel("EDIT: pomakni panel prstom, DONE: spremi položaj"));',
      '    installDrnasMouseOptions(options);\n    options.addView(drnasUiLabel("EDIT: pomakni panel prstom, DONE: spremi položaj"));')
-# The circular control itself becomes the drag surface in EDIT mode; no permanent grip chip.
-once('    group.setOrientation(LinearLayout.VERTICAL);', '    group.setOrientation(LinearLayout.HORIZONTAL);')
-once('    heading.setText("ZOOM / MOVE");', '''    heading.setText("");
+# One unobtrusive drag grip appears only while the Pojav-style layout editor is active.
+once('    group.setOrientation(LinearLayout.VERTICAL);', '    group.setOrientation(LinearLayout.VERTICAL);')
+once('    heading.setText("ZOOM / MOVE");', '''    heading.setText("MOVE");
+    heading.setVisibility(drnasEdit ? View.VISIBLE : View.GONE);
     if (heading instanceof DrnasIconTextView) {
       ((DrnasIconTextView)heading).setDrnasIcon("grip", DrnasSkin.ICON_MD, DrnasSkin.ICON_SECONDARY, false);
     }''')
 once('    group.setBackgroundColor(Color.argb(220, 22, 52, 73));',
      '    group.setBackgroundColor(Color.TRANSPARENT);')
 once('    group.addView(heading, new LinearLayout.LayoutParams(-1, dpDrnas(26)));',
-     '    heading.setVisibility(View.GONE);\n    group.addView(heading, new LinearLayout.LayoutParams(0, 0));\n    drnasDockMouseButtons(group);')
+     '    group.addView(heading, new LinearLayout.LayoutParams(-1, dpDrnas(24)));\n    drnasDockMouseButtons(group);')
 once('    drnasPosition(group, "zoom", true, 115, 96, 190, 80);', '''    drnasPosition(group, "zoom", true, 12, 18, 340, 80);
     drnasPanels.get(group).anchor.height = ViewGroup.LayoutParams.WRAP_CONTENT;
     drnasPanels.get(group).anchor.width = ViewGroup.LayoutParams.WRAP_CONTENT;

@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """Integrate the DRNAS touch control layer into the pinned BlenderActivity.java.
 
-Run **after** the existing overlay chain (``apply_gpu_test_patches.sh`` plus
-``add_control_group_editor.py``, ``fix_relative_ime_input.py``,
-``fix_floating_stretch_v10.py``, ``patch_alpha_1_0_uilib.py``).
+Run **after** the pinned Android port and its native/input support patches. This pass replaces the
+previous circular/radial controller UI with a fresh trackpad + independent LMB/MMB/RMB control.
 
 Deterministic and fail closed: every anchor must occur exactly once, every fragment is inserted
-verbatim from a ``.java.inc`` file, and the script re-reads the result to prove the old,
-double-scaling trackpad and the old single "mouse down" bookkeeping are gone. An upstream or
-overlay change that moves an anchor stops the build with the anchor named, instead of producing a
-subtly broken overlay.
+verbatim from a ``.java.inc`` file, and post-validation rejects the superseded radial views and
+legacy trackpad mapping. An upstream or overlay change that moves an anchor stops the build with the
+anchor named instead of producing a subtly broken overlay.
 
 GPL-2.0-or-later, like the upstream sources this patches.
 """
@@ -106,19 +104,19 @@ once(
     "touch layer insertion",
 )
 
-# ------------------------------------------------------------------ 4. one integrated mouse + scroll surface
+# Remove the former one-dimensional zoom slider: the touchpad now has explicit wheel/scroll gestures.
+cut(
+    "    SeekBar zoom = new SeekBar(this);",
+    "    final LinearLayout speed = new LinearLayout(this);",
+    "remove obsolete zoom slider from the mouse controller",
+)
+
+# ------------------------------------------------------------------ 4. replace every old button/radial surface with a trackpad + button bank
 cut(
     "  private void drnasDockMouseButtons(LinearLayout dock) {",
     "  private final java.util.Map<View, View> drnasDockedMouse =",
-    "replace detached mouse buttons with one touch surface",
+    "replace legacy mouse controls with the fresh controller",
     load("drnas_mouse_dock_method.java.inc"),
-)
-
-# Move the ring itself in EDIT mode; normal touches continue to reach its radial hit zones.
-once(
-    '    drnasEnableDrag(heading, group, "zoom");',
-    '    drnasEnableDrag(drnasMouseDockView, group, "zoom");',
-    "native mouse-ring repositioning",
 )
 
 # ------------------------------------------------------------------ 5. setup input without constructing three floating button cards
@@ -136,16 +134,19 @@ cut(
     "remove detached mouse button factory",
 )
 
-# ------------------------------------------------------------------ 5a. one-time visual migration keeps the new compact default
+# ------------------------------------------------------------------ 5a. one-time Pojav-style controller migration
 once(
     '    drnasPrefs = getSharedPreferences("drnas_native_controls_v1", MODE_PRIVATE);',
     '''    drnasPrefs = getSharedPreferences("drnas_native_controls_v1", MODE_PRIVATE);
-    if (!drnasPrefs.getBoolean("visual_design_v1", false)) {
-      drnasPrefs.edit().putBoolean("shortcut_expanded", false)
-          .putBoolean("zoom_visible", false).putBoolean("nav_views_visible", false)
-          .putBoolean("visual_design_v1", true).apply();
+    if (!drnasPrefs.getBoolean("mouse_controller_v2", false)) {
+      drnasPrefs.edit().remove("zoom_x").remove("zoom_y")
+          .putInt("mouse_button_percent", 100).putBoolean("mouse_visible", true)
+          .putBoolean("shortcut_expanded", false)
+          .putBoolean("relative_mouse", true).putInt("input_mode", 1)
+          .remove("tools_x").remove("tools_y").remove("tool_page")
+          .putBoolean("mouse_controller_v2", true).apply();
     }''',
-    "compact visual defaults",
+    "fresh mouse-controller layout migration",
 )
 
 # ------------------------------------------------------------------ 6. physical mouse path
@@ -233,9 +234,8 @@ once(
 # ------------------------------------------------------------------ 10. overlay install
 once(
     "    installDrnasShortcutStrip();\n    installDrnasAndroidBack();",
-    "    installDrnasShortcutStrip();\n    installDrnasNavWidget();\n"
-    "    installDrnasToolPalette();\n    installDrnasModeBadge();\n    installDrnasAndroidBack();",
-    "navigation widget install",
+    "    installDrnasShortcutStrip();\n    installDrnasModeBadge();\n    installDrnasAndroidBack();",
+    "mouse controller and keyboard shelf installation",
 )
 
 # ------------------------------------------------------------------ 11. lifecycle
@@ -334,19 +334,18 @@ required = [
     ("DrnasRelativePad", "relative pad"),
     ("DrnasControlLayout", "layout model"),
     ("DrnasSkin", "shared visual tokens"),
-    ("DrnasIconTextView", "vector mouse controls"),
-    ("DrnasNavigationPadView", "circular navigation dial"),
-    ("DrnasRadialPaletteView", "contextual tool palette"),
-    ("DrnasRadialPaletteModel", "purpose-specific radial actions"),
-    ("installDrnasToolPalette(", "movable tool palette installation"),
+    ("DrnasIconTextView", "local vector icon surface"),
+    ("DrnasMouseButtonModel", "independent mouse-button ownership"),
+    ("DrnasMouseSurfaceView", "trackpad and wheel surface"),
+    ("DrnasMouseButtonView", "separate accessible mouse buttons"),
+    ("drnasMouseButtonModel", "mouse-button input state"),
     ("drnasRegisterSkinGroup", "idle opacity state"),
     ("private native int nativeDrnasCapabilities();", "capability declaration"),
     ("drnasSetInputMode(", "mode switching"),
-    ("installDrnasNavWidget(", "navigation widget"),
     ("installDrnasLayoutOptions(", "layout presets"),
     ("drnasReleaseTouchInput(", "input release"),
-    ("DrnasMouseRingView", "circular movable mouse controller"),
-    ("drnasMouseDockView.setMiddleAvailable", "middle button capability gate"),
+    ("drnasMouseSurfaceView", "movable mouse touchpad"),
+    ("drnasMovePointerRelative(", "bounded relative cursor movement"),
 ]
 for needle, what in required:
     if needle not in result:
@@ -356,6 +355,12 @@ forbidden = [
     "drnasNativePointerX",
     "private final class DrnasTrackpad implements View.OnTouchListener {\n    float lastX",
     "drnasSendInput(1, drnasNativePointerX(",
+    "DrnasMouseRingView",
+    "DrnasNavigationPadView",
+    "DrnasRadialPaletteView",
+    "DrnasRadialPaletteModel",
+    "installDrnasNavWidget(",
+    "installDrnasToolPalette(",
 ]
 for needle in forbidden:
     if needle in result:
@@ -386,12 +391,10 @@ shipped = [
     "DrnasChrome.java",
     "DrnasIconTextView.java",
     "DrnasIconButton.java",
-    "DrnasMouseRingView.java",
-    "DrnasNavigationPadView.java",
-    "DrnasRadialPaletteView.java",
-    "DrnasRadialPaletteModel.java",
-    "DrnasDockGesture.java",
-    "DrnasNavGesture.java",
+    "DrnasMousePadGesture.java",
+    "DrnasMouseButtonModel.java",
+    "DrnasMouseSurfaceView.java",
+    "DrnasMouseButtonView.java",
 ]
 for name in shipped:
     source = patch_dir / name
@@ -402,5 +405,5 @@ for name in shipped:
     if not installed.is_file() or "package org.blender.blender;" not in installed.read_text():
         raise SystemExit(f"{name} was not installed into the APK source tree")
 
-print("PASS: touch layer, radial mouse ring, navigation dial, tool palette, presets, lifecycle release "
+print("PASS: touch layer, trackpad, LMB/MMB/RMB buttons, scroll/pinch gestures, presets, lifecycle release "
       f"({len(shipped)} logic classes installed)")

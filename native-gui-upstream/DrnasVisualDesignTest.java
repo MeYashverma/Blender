@@ -27,8 +27,8 @@ public final class DrnasVisualDesignTest {
 
     check("touch targets remain at least 48dp", DrnasSkin.TOUCH_MIN >= 48f);
     check("icon stays compact within a touch target", DrnasSkin.ICON_LG <= DrnasSkin.TOUCH_MIN / 2f);
-    check("center MMB target is at least the touch minimum", DrnasSkin.DOCK_TARGET_CENTRE >= DrnasSkin.TOUCH_MIN);
-    check("dock left/right touch targets remain at least 48dp", DrnasSkin.DOCK_TARGET >= DrnasSkin.TOUCH_MIN);
+    check("each mouse button meets minimum touch height", DrnasSkin.MOUSE_BUTTON_MIN >= DrnasSkin.TOUCH_MIN);
+    check("mouse button target provides comfortable spacing", DrnasSkin.MOUSE_BUTTON_TARGET >= DrnasSkin.MOUSE_BUTTON_MIN);
     check("active is fully prominent", DrnasSkin.ALPHA_ACTIVE == 1f);
     check("idle remains visibly discoverable", DrnasSkin.ALPHA_IDLE >= 0.8f);
     check("minimized remains discoverable", DrnasSkin.ALPHA_MINIMIZED >= 0.5f);

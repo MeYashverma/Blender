@@ -114,17 +114,12 @@
       lp.setMargins(dpDrnas(1), 0, dpDrnas(1), 0);
       drnasDockZoomToggle.setLayoutParams(lp); ((TextView)drnasDockZoomToggle).setTextSize(11f * factor);
     }
-    if (drnasDockZoomSlider != null) {
-      int available = getResources().getDisplayMetrics().widthPixels - dpDrnas(24 + 268 * factor);
-      int width = Math.max(dpDrnas(48), Math.min(dpDrnas(120 * factor), available));
-      drnasDockZoomSlider.setLayoutParams(new LinearLayout.LayoutParams(width, dpDrnas(48 * factor)));
-    }
     if (save) drnasPrefs.edit().putInt("mouse_button_percent", drnasMouseButtonPercent).apply();
     drnasRefreshPanels();
   }
 
   private void drnasInstallMouseSizeOptions(LinearLayout options) {
-    options.addView(drnasUiLabel("VELIČINA RADIALNOG MIŠA"));
+    options.addView(drnasUiLabel("VELIČINA MIŠA I TOUCHPADA"));
     final TextView value = drnasUiLabel(drnasMouseButtonPercent + "% • LMB / MMB / RMB · scroll");
     options.addView(value);
     SeekBar size = new SeekBar(this); drnasStyleSeekBar(size); size.setMax(60); size.setProgress(drnasMouseButtonPercent - 90);

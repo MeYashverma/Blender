@@ -13,11 +13,12 @@ def once(old, new):
 
 # The popup must be remeasured explicitly on expansion. A child layout listener
 # cannot discover its desired width while the old small window constrains it.
-once('      opener.setText(expand ? "✕" : "⌨");', '''      opener.setText(expand ? "⌄" : "⌨");
+once('      opener.setDrnasIcon(expand ? "close" : "keyboard", DrnasSkin.ICON_MD);', '''      opener.setDrnasIcon(expand ? "close" : "keyboard", DrnasSkin.ICON_MD);
       drnasPrefs.edit().putBoolean("shortcut_expanded", expand).apply();
       drnasRefreshPanels();''')
-once('    scroll.setVisibility(View.GONE);', '''    scroll.setVisibility(drnasPrefs.getBoolean("shortcut_expanded", true) ? View.VISIBLE : View.GONE);''')
-once('    opener.setText("⌨");', '    opener.setText(drnasPrefs.getBoolean("shortcut_expanded", true) ? "⌄" : "⌨");')
+once('    scroll.setVisibility(View.GONE);', '''    boolean shortcutsInitiallyExpanded = drnasPrefs.getBoolean("shortcut_expanded", true);
+    scroll.setVisibility(shortcutsInitiallyExpanded ? View.VISIBLE : View.GONE);
+    opener.setDrnasIcon(shortcutsInitiallyExpanded ? "close" : "keyboard", DrnasSkin.ICON_MD);''')
 once('getResources().getDisplayMetrics().widthPixels - dpDrnas(360)',
      'getResources().getDisplayMetrics().widthPixels - dpDrnas(150)')
 once('    drnasButtonSizes(drnasButtonPercent, false);', '''    drnasButtonSizes(drnasButtonPercent, false);

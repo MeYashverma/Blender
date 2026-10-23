@@ -20,15 +20,13 @@
   private final DrnasRelativePad drnasPadMotion = new DrnasRelativePad();
   private DrnasGestureEngine drnasGestures;
   private DrnasMouseState drnasMouseButtons;
+  private DrnasMouseButtonModel drnasMouseButtonModel;
 
   private int drnasInputMode = DRNAS_MODE_DIRECT;
   private int drnasCaps = -1;
   private boolean drnasTouchReady;
-  private float drnasNavLastX, drnasNavLastY;
-  private float drnasNavSpeed = 1.6f;
   private View drnasModeChrome;
   private TextView drnasModeBadge;
-  private View drnasNavBar;
   private boolean drnasOverlayHidden;
 
   /**
@@ -63,6 +61,13 @@
     drnasNavSpeed = Math.max(0.4f, Math.min(4f, drnasPrefs.getInt("nav_speed", 160) / 100f));
     drnasMouseButtons = new DrnasMouseState((bit, down) -> drnasEmitMouse(bit, down));
     drnasMouseButtons.setMiddleAvailable(drnasHasCapability(DRNAS_CAP_MIDDLE));
+    drnasMouseButtonModel = new DrnasMouseButtonModel((bit, down) -> {
+      if (drnasMouseButtons == null) return;
+      if (down) drnasMouseButtons.press(bit);
+      else drnasMouseButtons.release(bit);
+      for (DrnasMouseButtonView button : drnasMouseButtonViews) button.invalidate();
+    }, android.view.ViewConfiguration.getDoubleTapTimeout());
+    drnasMouseButtonModel.setMiddleAvailable(drnasHasCapability(DRNAS_CAP_MIDDLE));
     final boolean canOrbit = drnasHasCapability(DRNAS_CAP_MIDDLE);
     final boolean canPan = canOrbit && drnasHasCapability(DRNAS_CAP_SHIFT);
     drnasGestures = new DrnasGestureEngine(drnasGestureSink);
@@ -249,10 +254,8 @@
 
   /** Releases every touch-driven button and modifier. Safe to call repeatedly. */
   private void drnasReleaseTouchInput(String reason) {
-    if (drnasMouseDockView != null) drnasMouseDockView.releaseAll();
-    if (drnasNavBar instanceof DrnasNavigationPadView) {
-      ((DrnasNavigationPadView)drnasNavBar).releaseAll();
-    }
+    if (drnasMouseSurfaceView != null) drnasMouseSurfaceView.releaseAll();
+    if (drnasMouseButtonModel != null) drnasMouseButtonModel.releaseAll();
     if (drnasGestures != null) {
       drnasGestures.releaseAll(reason);
     }
@@ -273,6 +276,22 @@
     if (drnasInputMode == DRNAS_MODE_RELATIVE) {
       drnasPadMotion.setPosition(drnasPointerX, drnasPointerY);
     }
+    drnasSendInput(1, drnasPointerX, drnasPointerY, 0f);
+    drnasUpdatePointer();
+  }
+
+  /** Trackpad deltas use the same bounded, accelerated native pointer as relative mode. */
+  private void drnasMovePointerRelative(float dx, float dy) {
+    drnasSyncPointerGeometry();
+    if (drnasPointerX < 0f || drnasPointerY < 0f) {
+      drnasPadMotion.centre();
+      drnasPointerX = drnasPadMotion.x();
+      drnasPointerY = drnasPadMotion.y();
+    }
+    drnasPadMotion.setPosition(drnasPointerX, drnasPointerY);
+    drnasPadMotion.move(dx, dy);
+    drnasPointerX = drnasPadMotion.x();
+    drnasPointerY = drnasPadMotion.y();
     drnasSendInput(1, drnasPointerX, drnasPointerY, 0f);
     drnasUpdatePointer();
   }

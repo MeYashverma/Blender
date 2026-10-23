@@ -30,6 +30,8 @@ once("    addContentView(bar, params);", """    addContentView(bar, params);
     edit.setOnClickListener(v -> {
       drnasEdit = !drnasEdit;
       edit.setText(drnasEdit ? "DONE" : "EDIT");
+      if (drnasDockGrip != null) drnasDockGrip.setVisibility(drnasEdit ? View.VISIBLE : View.GONE);
+      drnasMouseButtonSizes(drnasMouseButtonPercent, false);
     });
     final Button sens = new Button(this);
     sens.setText("SENS");

@@ -80,7 +80,7 @@
       public void onStartTrackingTouch(SeekBar b) {}
       public void onStopTrackingTouch(SeekBar b) {}
     });
-    options.addView(drnasUiLabel("Miš: tap = lijevi klik • 2 prsta = zoom / desni tap"));
+    options.addView(drnasUiLabel("Miš: pomakni za pokazivač • dva prsta: pomicanje / pinch • drži MMB za orbit"));
 
   }
 

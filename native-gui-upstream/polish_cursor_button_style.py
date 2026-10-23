@@ -15,7 +15,7 @@ once('  private boolean drnasRelativeMouse, drnasPointerEffect = true;',
      '  private boolean drnasRelativeMouse, drnasPointerEffect = true;\n  private int drnasCursorPercent = 70;')
 once('    drnasMouseSpeed = drnasPrefs.getInt("mouse_speed", 100) / 100f;', '''    drnasMouseSpeed = drnasPrefs.getInt("mouse_speed", 100) / 100f;
     drnasCursorPercent = Math.max(40, Math.min(150, drnasPrefs.getInt("cursor_percent", 70)));''')
-once('    options.addView(drnasUiLabel("Miš: tap = lijevi klik • 2 prsta = zoom / desni tap"));', '''    final TextView cursorSizeLabel = drnasUiLabel("Veličina kursora: " + drnasCursorPercent + "%");
+once('    options.addView(drnasUiLabel("Miš: pomakni za pokazivač • dva prsta: pomicanje / pinch • drži MMB za orbit"));', '''    final TextView cursorSizeLabel = drnasUiLabel("Veličina kursora: " + drnasCursorPercent + "%");
     options.addView(cursorSizeLabel);
     SeekBar cursorSize = new SeekBar(this);
     drnasStyleSeekBar(cursorSize);
@@ -32,7 +32,7 @@ once('    options.addView(drnasUiLabel("Miš: tap = lijevi klik • 2 prsta = zo
       public void onStartTrackingTouch(SeekBar b) {}
       public void onStopTrackingTouch(SeekBar b) {}
     });
-    options.addView(drnasUiLabel("Miš: tap = lijevi klik • 2 prsta = zoom / desni tap"));''')
+    options.addView(drnasUiLabel("Miš: pomakni za pokazivač • dva prsta: pomicanje / pinch • drži MMB za orbit"));''')
 once('new android.widget.PopupWindow(drnasPointer, dpDrnas(38), dpDrnas(38), false)',
      'new android.widget.PopupWindow(drnasPointer, dpDrnas(38 * drnasCursorPercent / 100f), dpDrnas(38 * drnasCursorPercent / 100f), false)')
 once('int x = Math.round(drnasPointerX) - dpDrnas(4), y = Math.round(drnasPointerY) - dpDrnas(4);',
@@ -70,14 +70,8 @@ once('      v.setTextSize(13f * factor);', '      v.setTextSize(14f * factor);')
 # drnasSmallKey already uses drnasStyleKey from the shared visual system.
 once('''    button.setBackground(drnasPill(enabled ? Color.rgb(35, 120, 137) :
                                           Color.rgb(29, 54, 79)));''', '    button.setActivated(enabled);')
-once('    opener.setText(drnasPrefs.getBoolean("shortcut_expanded", true) ? "⌄" : "⌨");', '''    opener.setText("");
-    opener.setDrnasIcon("keyboard", DrnasSkin.ICON_MD);
-    opener.setContentDescription("Show keyboard and shortcuts");''')
-once('      opener.setText(expand ? "⌄" : "⌨");',
+once('      opener.setDrnasIcon(expand ? "close" : "keyboard", DrnasSkin.ICON_MD);',
      '      opener.setContentDescription(expand ? "Hide shortcuts" : "Show shortcuts");')
-once('    settings.setText("⚙");', '''    settings.setText("");
-    settings.setDrnasIcon("settings", DrnasSkin.ICON_MD);
-    settings.setContentDescription("Control settings");''')
 once('    opener.setBackground(drnasPill(Color.rgb(37, 82, 114)));', '    drnasStyleKey(opener, false);')
 once('    settings.setBackground(drnasPill(Color.rgb(37, 82, 114)));', '    drnasStyleKey(settings, false);')
 once('    closeOptions.setAllCaps(false);', '    closeOptions.setAllCaps(false);\n    drnasStyleKey(closeOptions, false);')
